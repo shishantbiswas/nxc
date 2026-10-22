@@ -81,6 +81,12 @@ To run with Docker Compose, configure the `.env` file first, then run:
 docker compose up --build
 ```
 
+On every push to `main` and every `v*` tag, GitHub Actions builds and publishes `ghcr.io/shishantbiswas/nxc`. The `main` branch also updates the `latest` tag; version tags are published as matching image tags. Pull the latest image with:
+
+```sh
+docker pull ghcr.io/shishantbiswas/nxc:latest
+```
+
 ## Development commands
 
 ```sh
