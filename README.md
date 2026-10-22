@@ -63,7 +63,7 @@ cp .env.example .env
 | `POSTGRES_URL` | Connection string required when `DB_TYPE=postgres`. |
 | `LIBSQL_URL`, `LIBSQL_TOKEN` | Required for remote libSQL database modes. |
 | `STORAGE_TYPE` | `local` (default) or `S3`. |
-| `LOCAL_STOARGE_PATH` | Local upload directory; defaults to `data/uploads`. |
+| `LOCAL_STORAGE_PATH` | Local upload directory; defaults to `data/uploads`. |
 | `S3_ACCESS_KEY`, `S3_SECRET_ACCESS_KEY`, `S3_URL_WITH_BUCKET` | Required when `STORAGE_TYPE=S3`. |
 | `PORT` | Production server port; defaults to `3000`. |
 | `MAX_BODY_SIZE` | Maximum request body size in bytes; defaults to 1 GiB. |

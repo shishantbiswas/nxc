@@ -95,7 +95,7 @@ export const getStorage = () => {
   switch (data.storage) {
     case "local": {
       return registerLocalMediaAdapter()({
-        path: process.env.LOCAL_STOARGE_PATH ?? "data/uploads",
+        path: process.env.LOCAL_STORAGE_PATH ?? "data/uploads",
       });
     }
     case "S3": {
