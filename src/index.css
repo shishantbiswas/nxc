@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: all;
+  logs: false;
+}
+
+#bknd-admin .link {
+  text-decoration: none;
+}
+
+.markdown-body a,
+.markdown-body img {
+  display: inline-block !important;
+  vertical-align: middle;
+}
