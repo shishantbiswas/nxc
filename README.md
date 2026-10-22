@@ -44,27 +44,32 @@ bun install
 bun run dev
 ```
 
-The development server runs on [http://localhost:3000](http://localhost:3000). Local development uses `data.db` for the database and `./uploads` for uploaded files by default.
+The development server runs on [http://localhost:3000](http://localhost:3000). Development uses `data.db` for the database. Local file uploads are stored in `data/uploads` by default.
 
 ## Configuration
 
-Create a `.env` file in the project root to configure the app. Development uses `data.db`; outside development the database defaults to local libSQL (`DB_TYPE=libsql`). File storage defaults to the local filesystem (`STORAGE_TYPE=local`).
+Copy `.env.example` to `.env` and adjust the values for your environment. In development the database uses `data.db`; in production it defaults to local libSQL at `data/local.db`. Local file storage defaults to `data/uploads`.
+
+```sh
+cp .env.example .env
+```
 
 | Variable | Purpose |
 | --- | --- |
-| `EMAIL`, `PASSWORD` | Set these credentials for the administrator account created when the database is seeded. |
+| `USER_EMAIL`, `USER_PASSWORD`, `USER_NAME` | Credentials and display name for the administrator account created when the database is seeded. |
 | `JWT_SECRET` | Secret used to sign authentication tokens. Set a strong secret before deployment. |
 | `DB_TYPE` | `libsql` (default), `sqlite`, `postgres`, `libsql-remote`, or `libsql-remote-embedded-replicas`. |
+| `DATABASE_PATH` | Local database file path; defaults to `data/local.db` outside development. |
 | `POSTGRES_URL` | Connection string required when `DB_TYPE=postgres`. |
 | `LIBSQL_URL`, `LIBSQL_TOKEN` | Required for remote libSQL database modes. |
 | `STORAGE_TYPE` | `local` (default) or `S3`. |
-| `LOCAL_STOARGE_PATH` | Local upload directory; defaults to `./uploads`. |
+| `LOCAL_STORAGE_PATH` | Local upload directory; defaults to `data/uploads`. |
 | `S3_ACCESS_KEY`, `S3_SECRET_ACCESS_KEY`, `S3_URL_WITH_BUCKET` | Required when `STORAGE_TYPE=S3`. |
 | `PORT` | Production server port; defaults to `3000`. |
 | `MAX_BODY_SIZE` | Maximum request body size in bytes; defaults to 1 GiB. |
 | `ENABLE_GUARD` | Configure the authentication guard; enabled by default in production. |
 
-Do not commit `.env` or production credentials.
+For Docker Compose, keep the database and local uploads in the mounted `./data` directory so they persist across container replacements. Do not commit `.env` or production credentials.
 
 ## Build and run
 
@@ -73,15 +78,29 @@ bun run build
 bun run serve
 ```
 
-The production server listens on port `3000` by default.
+The production server listens on port `3000` by default. Static assets are served with long-lived immutable cache headers.
 
-To run with Docker Compose, configure the `.env` file first, then run:
+### Docker Compose with the published image
+
+Configure `.env`, then start the published image:
 
 ```sh
-docker compose up --build
+docker compose up -d
 ```
 
-On every push to `main` and every `v*` tag, GitHub Actions builds and publishes `ghcr.io/shishantbiswas/nxc`. The `main` branch also updates the `latest` tag; version tags are published as matching image tags. Pull the latest image with:
+The default Compose file uses `ghcr.io/shishantbiswas/nxc:v0.0.1` and persists application data under `./data`.
+
+### Docker Compose with a local build
+
+```sh
+docker compose -f dev.docker-compose.yaml up --build
+```
+
+This builds the image from the checked-out source and also persists application data under `./data`.
+
+### Published images
+
+GitHub Actions builds and publishes multi-platform images for `linux/amd64` and `linux/arm64` on pushes to `main` and `v*` tags. The default branch updates the `latest` tag; version tags are published as matching image tags. Pull the latest image with:
 
 ```sh
 docker pull ghcr.io/shishantbiswas/nxc:latest

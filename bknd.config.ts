@@ -115,9 +115,9 @@ export default {
   options: {
     seed: async (ctx) => {
       await ctx.app.module.auth.createUser({
-        email: process.env.EMAIL as string,
-        password: process.env.PASSWORD as string,
-        name: "Shishant Biswas",
+        name:     process.env.USER_NAME as string,
+        email:    process.env.USER_EMAIL as string,
+        password: process.env.USER_PASSWORD as string,
         role: "ADMIN",
       });
     },

@@ -14,7 +14,15 @@ const app = new Hono();
 // app.use(logger(customLogger));
 
 if (import.meta.env.PROD) {
-  app.use(serveStatic({ root: "./client" }));
+  app.use(
+    serveStatic({
+      root: "./client",
+      precompressed: true,
+      onFound: (_path, c) => {
+        c.header("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    }),
+  );
 }
 
 const handler = await createFrameworkApp(config);

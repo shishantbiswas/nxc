@@ -21,11 +21,11 @@ const schema = z.object({
 export type Config = z.infer<typeof schema>;
 
 const parsedConfig = schema.safeParse({
-  db:               process.env.DB_TYPE ?? "libsql",
-  storage:          process.env.STORAGE_TYPE ?? "local",
-  defaultUser:      process.env.USER_EMAIL ?? "user",
-  defaultUserName:  process.env.USER_NAME ?? "hi my name is",
-  defaultPassword:  process.env.USER_PASSWORD ?? "password",
+  db: process.env.DB_TYPE ?? "libsql",
+  storage: process.env.STORAGE_TYPE ?? "local",
+  defaultUser: process.env.USER_EMAIL ?? "user",
+  defaultUserName: process.env.USER_NAME ?? "hi my name is",
+  defaultPassword: process.env.USER_PASSWORD ?? "password",
 });
 
 const { data, success, error } = parsedConfig;
@@ -65,7 +65,7 @@ export const getDB = () => {
       }
       return libsql(
         createClient({
-          url: "file:local.db",
+          url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
           syncUrl: process.env.LIBSQL_URL,
           authToken: process.env.LIBSQL_TOKEN,
           syncInterval: 60,
@@ -73,9 +73,14 @@ export const getDB = () => {
       );
     }
     case "libsql":
-      return libsql(createClient({ url: "file:local.db" }));
+      return libsql(
+        createClient({
+          url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
+        }),
+      );
     case "sqlite":
       return bunSqlite({
+        url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
         onCreateConnection: (db) => {
           db.run("PRAGMA journal_mode = WAL;");
           db.run("PRAGMA synchronous = NORMAL;");
@@ -90,7 +95,7 @@ export const getStorage = () => {
   switch (data.storage) {
     case "local": {
       return registerLocalMediaAdapter()({
-        path: process.env.LOCAL_STOARGE_PATH ?? "./uploads",
+        path: process.env.LOCAL_STORAGE_PATH ?? "data/uploads",
       });
     }
     case "S3": {
