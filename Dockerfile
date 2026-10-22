@@ -18,7 +18,6 @@ RUN apk add --no-cache libc6-compat wget curl ffmpeg
 WORKDIR /app
 
 ENV NODE_ENV=production \
-  PORT=3000 \
   HOSTNAME="0.0.0.0"
 
 RUN addgroup --system --gid 1001 bunjs && \
@@ -29,7 +28,6 @@ COPY --from=runtime-deps --chown=nxc:bunjs /app/node_modules ./dist/server/node_
 
 WORKDIR /app/dist
 USER nxc
-RUN mkdir uploads
 
 EXPOSE 3000
 
