@@ -1,5 +1,6 @@
 import path from "node:path";
 import devServer from "@hono/vite-dev-server";
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
@@ -10,7 +11,7 @@ const ssrBuildConfig: BuildEnvironmentOptions = {
   outDir: "dist/server",
   ssrEmitAssets: true,
   copyPublicDir: false,
-  // minify: true,
+  minify: true,
   emptyOutDir: true,
   rolldownOptions: {
     input: path.resolve(import.meta.dirname, "src/server.ts"),
@@ -52,6 +53,9 @@ export default defineConfig(({ mode }) => {
         autoCodeSplitting: true,
       }),
       react(),
+      babel({
+        plugins: ["babel-plugin-react-compiler"],
+      }),
       devServer({
         env,
         entry: "src/server.ts",

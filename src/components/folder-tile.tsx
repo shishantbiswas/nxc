@@ -59,9 +59,10 @@ export function FolderTile({
             ...pre,
             folderId: folder.id,
           })}
-          className="flex items-center justify-center w-full"
+          className="flex flex-col h-32! items-center justify-center "
         >
-          <Folder className="size-10 h-32!" />
+          <Folder className="size-10 shrink-0" />
+          <p className="text-sm truncate text-wrap text-center px-4">{folder.name}</p>
         </Link>
         <div
           className={cn(

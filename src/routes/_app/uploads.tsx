@@ -1,10 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useSnapshot } from "valtio";
+import { CircleCheck } from "lucide-react";
+import { useSnapshot } from "valtio/react";
 import { uploadStore } from "../../store/upload";
 import bytesToSize from "../../utils/format-bytes";
+import { truncateText } from "../../utils/truncate-text";
 
 export const Route = createFileRoute("/_app/uploads")({
   component: RouteComponent,
+  head: () => ({
+    meta: [
+      {
+        title: "Progress Manager",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {
@@ -16,13 +25,13 @@ function RouteComponent() {
   const errorCount = tasks.filter((t) => t.status === "error").length;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container p-4 space-y-6 min-w-full">
       {/* Page Header */}
-      <div className="flex justify-between items-center border-b border-base-300 pb-4">
+      <div className="flex justify-between items-center pb-4">
         <div>
-          <h1 className="text-2xl font-bold">Upload Manager</h1>
+          <h1 className="text-2xl font-bold">Progress Manager</h1>
           <p className="text-sm text-base-content/70">
-            Monitor and manage individual background file uploads
+            Monitor and manage individual background file queues/uploads
           </p>
         </div>
         <div className="flex gap-2">
@@ -39,7 +48,7 @@ function RouteComponent() {
       </div>
 
       {/* Summary Stats */}
-      <div className="stats shadow border border-base-200 w-full">
+      <div className="stats shadow w-full stats-vertical sm:stats-horizontal">
         <div className="stat">
           <div className="stat-title">Total Files</div>
           <div className="stat-value">{tasks.length}</div>
@@ -49,8 +58,18 @@ function RouteComponent() {
           <div className="stat-value">{activeCount}</div>
         </div>
         <div className="stat">
+          <div className="stat-figure">
+            <CircleCheck />
+          </div>
           <div className="stat-title">Completed</div>
           <div className="stat-value">{completedCount}</div>
+          {completedCount > 0 && (
+            <div className="stat-actions">
+              <button type="button" className="btn btn-xs ">
+                Clear Completed
+              </button>
+            </div>
+          )}
         </div>
         <div className="stat">
           <div className="stat-title">Failed</div>
@@ -59,13 +78,14 @@ function RouteComponent() {
       </div>
 
       {/* Full Page Data Table */}
-      <div className="overflow-x-auto rounded-box border border-base-200 bg-base-100 shadow-sm">
+      <div className="overflow-x-auto rounded-box  bg-base-100/60 shadow-sm">
         <table className="table table-zebra w-full">
           <thead>
             <tr>
               <th>File Name</th>
               <th>Relative Path</th>
               <th>Size</th>
+              <th>Type</th>
               <th>Progress</th>
               <th>Status</th>
               <th className="text-right">Actions</th>
@@ -85,17 +105,21 @@ function RouteComponent() {
               tasks.map((task) => (
                 <tr key={task.id}>
                   {/* File Name */}
-                  <td className="font-semibold text-sm">{task.name}</td>
+                  <td className="font-semibold text-sm">
+                    {truncateText(task.name, 24)}
+                  </td>
 
                   {/* Path */}
                   <td className="text-xs font-mono text-base-content/70 truncate max-w-xs">
-                    {task.path}
+                    {truncateText(task.path, 24)}
                   </td>
 
                   {/* Size */}
                   <td className="text-xs whitespace-nowrap">
                     {bytesToSize(task.size)}
                   </td>
+
+                  <td className="text-xs whitespace-nowrap">{task.type}</td>
 
                   {/* Progress Bar & Percentage */}
                   <td className="w-1/4">
@@ -122,6 +146,12 @@ function RouteComponent() {
                     {task.status === "pending" && (
                       <span className="badge badge-ghost badge-sm">
                         Pending
+                      </span>
+                    )}
+                    {task.status === "converting" && (
+                      <span className="badge badge-info badge-sm">
+                        <span className="loading loading-spinner loading-xs" />
+                        Converting
                       </span>
                     )}
                     {task.status === "uploading" && (

@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
 import { UploadCloud } from "lucide-react";
+import { modalStore } from "../store/modal";
 
 export function Empty({
   hideAction = false,
@@ -23,14 +23,13 @@ export function Empty({
 
         {!hideAction && (
           <div className="card-actions">
-            <Link
-              to="."
-              search={(pre) => ({ ...pre, create: "FILE" })}
+            <button
+              onClick={() => modalStore.setType("FILE")}
               type="button"
               className="btn btn-soft btn-sm"
             >
               Upload file
-            </Link>
+            </button>
           </div>
         )}
       </div>

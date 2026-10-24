@@ -28,10 +28,6 @@ if (import.meta.env.PROD) {
 const handler = await createFrameworkApp(config);
 app.all("/api/*", async (c) => await handler.server.fetch(c.req.raw));
 
-// if (process.env.NODE_ENV === "production") {
-//   app.use("/*", serveStatic({ root: "./dist/client", precompressed: true }));
-// }
-
 const isProd = import.meta.env.PROD;
 
 let cssPath = "/src/index.css";
@@ -58,9 +54,8 @@ app.get("*", (c) => {
     <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Home</title>
     <link rel="stylesheet" href=${cssPath} />
-    <link rel="shortcut icon" href="/favicon.svg" type="image/x-icon">
+
     <script>
       (function () {
         const savedTheme = localStorage.getItem('theme') || 'system';
@@ -94,6 +89,23 @@ app.get("*", (c) => {
     </html>
   `);
 });
+
+// const server = serve(app)
+
+// // graceful shutdown
+// process.on('SIGINT', () => {
+//   server.close()
+//   process.exit(0)
+// })
+// process.on('SIGTERM', () => {
+//   server.close((err) => {
+//     if (err) {
+//       console.error(err)
+//       process.exit(1)
+//     }
+//     process.exit(0)
+//   })
+// })
 
 export default isProd
   ? Bun.serve({

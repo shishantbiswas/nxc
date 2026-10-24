@@ -1,4 +1,4 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
 import { ClientProvider } from "bknd/client";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/toast-provider";
@@ -14,4 +14,10 @@ const RootLayout = () => (
   </ClientProvider>
 );
 
-export const Route = createRootRoute({ component: RootLayout });
+export const Route = createRootRoute({ component: () => (
+    <>
+      <HeadContent />
+      <RootLayout />
+    </>
+  ),
+ });

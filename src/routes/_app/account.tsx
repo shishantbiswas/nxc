@@ -9,6 +9,13 @@ import { api } from "../../lib/bknd";
 
 export const Route = createFileRoute("/_app/account")({
   component: RouteComponent,
+  head: () => ({
+    meta: [
+      {
+        title: "Account",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {
@@ -16,48 +23,45 @@ function RouteComponent() {
   const hashWithoutSymbol = window.location.hash.substring(1) || "security";
 
   return (
-    <>
-      <title>Account</title>
-      <div className="p-4">
-        <div className="tabs tabs-box bg-base-100/50">
-          <input
-            type="radio"
-            name="user"
-            className="tab"
-            aria-label="Security"
-            defaultChecked={hashWithoutSymbol === "security"}
-            onClick={() => {
-              window.location.hash = "security";
-            }}
-          />
-          <Security user={user} />
+    <div className="p-4">
+      <div className="tabs tabs-box bg-base-100/50">
+        <input
+          type="radio"
+          name="user"
+          className="tab"
+          aria-label="Security"
+          defaultChecked={hashWithoutSymbol === "security"}
+          onClick={() => {
+            window.location.hash = "security";
+          }}
+        />
+        <Security user={user} />
 
-          <input
-            type="radio"
-            name="user"
-            className="tab"
-            aria-label="Appearance"
-            defaultChecked={hashWithoutSymbol === "appearance"}
-            onClick={() => {
-              window.location.hash = "appearance";
-            }}
-          />
-          <Appearance user={user} />
+        <input
+          type="radio"
+          name="user"
+          className="tab"
+          aria-label="Appearance"
+          defaultChecked={hashWithoutSymbol === "appearance"}
+          onClick={() => {
+            window.location.hash = "appearance";
+          }}
+        />
+        <Appearance user={user} />
 
-          <input
-            type="radio"
-            name="user"
-            defaultChecked={hashWithoutSymbol === "preferences"}
-            onClick={() => {
-              window.location.hash = "preferences";
-            }}
-            className="tab"
-            aria-label="Preferences"
-          />
-          <Preferences user={user} />
-        </div>
+        <input
+          type="radio"
+          name="user"
+          defaultChecked={hashWithoutSymbol === "preferences"}
+          onClick={() => {
+            window.location.hash = "preferences";
+          }}
+          className="tab"
+          aria-label="Preferences"
+        />
+        <Preferences user={user} />
       </div>
-    </>
+    </div>
   );
 }
 

@@ -9,7 +9,7 @@ RUN bun run build
 
 FROM base AS runtime-deps
 WORKDIR /app
-RUN echo '{"dependencies": {"sharp": "^0.35.5", "pg": "^8.23.0", "@libsql/client": "^0.18.0"}}' > package.json
+RUN echo '{"dependencies": {"sharp": "^0.35.5", "@libsql/client": "^0.18.0"}}' > package.json
 RUN bun install --production
 
 FROM oven/bun:alpine AS runner

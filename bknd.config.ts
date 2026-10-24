@@ -1,8 +1,3 @@
-import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { readFile, stat, unlink, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import {
   boolean,
   type DB,
@@ -17,21 +12,15 @@ import {
   text,
 } from "bknd";
 import type { FrameworkBkndConfig } from "bknd/adapter";
-import { registerLocalMediaAdapter } from "bknd/adapter/bun";
+import { registerLocalMediaAdapter } from "bknd/adapter/node";
 import type { Api } from "bknd/client";
 import { timestamps } from "bknd/plugins";
-import { streamSSE } from "hono/streaming";
 import { type Kysely, sql } from "kysely";
-import { nanoid } from "nanoid";
 import type { NodeFileMeta, UserPreferences } from "./bknd-types";
 import { getDB, getStorage } from "./src/config-creator";
-import { getMimeTypeByExtension } from "./src/utils/mime";
-import { getImageThumbnail } from "./src/utils/server/get-image-thumbnail";
-import { captureFrameFromTimestampFromLocalFile } from "./src/utils/server/get-video-frame";
-import {
-  getImageDimensions,
-  getVideoDimensionsFromLocalFile,
-} from "./src/utils/server/metadata";
+import { convertVideoPlugin } from "./src/plugins/bknd/convert-video";
+import { searchPlugin } from "./src/plugins/bknd/search";
+import { uploadViaUrlPlugin } from "./src/plugins/bknd/upload-via-url";
 
 const adapter = registerLocalMediaAdapter();
 
@@ -108,15 +97,15 @@ const isDev = process.env.NODE_ENV !== "production";
 export default {
   connection: isDev
     ? {
-        url: "data.db",
+        url: "file:dev.db",
       }
     : getDB(),
 
   options: {
     seed: async (ctx) => {
       await ctx.app.module.auth.createUser({
-        name:     process.env.USER_NAME as string,
-        email:    process.env.USER_EMAIL as string,
+        name: process.env.USER_NAME as string,
+        email: process.env.USER_EMAIL as string,
         password: process.env.USER_PASSWORD as string,
         role: "ADMIN",
       });
@@ -125,176 +114,22 @@ export default {
       timestamps({
         entities: ["nodes", "shared"],
       }),
+      searchPlugin,
+      convertVideoPlugin,
+      uploadViaUrlPlugin,
     ],
   },
   onBuilt: async (app) => {
-    const server = app.server;
     const db = app.connection.kysely;
 
-    server.post("/api/media/upload-by-url", async (c) => {
-      const headers = c.req.raw.headers;
-      const body = await c.req.json<{
-        id?: string;
-        url?: string;
-        name?: string;
-        folderId?: string;
-      }>();
-      if (!body?.url || !body?.name || !body?.id) {
-        return c.json(
-          { error: true, message: "('url'|'id'|'name') is not provided" },
-          400, // BAD_REQUEST,
-        );
-      }
-
-      const api = app.getApi({ headers });
-      await api.verifyAuth();
-      const { user } = await api.auth.me();
-
-      const verifiedUser = api.isAuthVerified() && api.isAuthenticated();
-
-      if (!verifiedUser || !user) {
-        return c.json(
-          { error: true, message: "unauthorized access" },
-          401, // UNAUTHORIZED,
-        );
-      }
-
-      const response = await fetch(body.url, { redirect: "follow" });
-      if (!response.body) {
-        return c.json({ error: true, message: "body is empty" });
-      }
-      const contentLength = response.headers.get("content-length");
-      const contentType =
-        response.headers.get("content-type") ?? "application/octet-stream";
-
-      const totalBytes = contentLength ? parseInt(contentLength, 10) : null;
-      const name = body.name;
-
-      const tempFilePath = path.join(tmpdir(), `${nanoid()}_${body.name}`);
-      const fileWriteStream = createWriteStream(tempFilePath);
-
-      return streamSSE(c as any, async (stream) => {
-        let receivedBytes = 0;
-        try {
-          const reader = response.body!.getReader();
-
-          const writePromise = (async () => {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) {
-                fileWriteStream.end();
-                break;
-              }
-
-              fileWriteStream.write(value);
-              receivedBytes += value.length;
-
-              const percentage = totalBytes
-                ? Math.round((receivedBytes / totalBytes) * 100)
-                : null;
-
-              await stream.writeSSE({
-                data: JSON.stringify({ percentage, receivedBytes, totalBytes }),
-                event: "upload-update",
-              });
-            }
-          })();
-
-          await writePromise;
-
-          const fileBuffer = await readFile(tempFilePath);
-
-          const file = new File([fileBuffer], body.name as string, {
-            type: contentType,
-          });
-          const size = Number(contentLength ?? file.size);
-
-          const ext =
-            name.lastIndexOf(".") !== -1
-              ? name.slice(name.lastIndexOf("."))
-              : "";
-
-          const { data } = await api.media.upload(file, {
-            filename: body.id + ext,
-          }); // create media
-
-          const mime = getMimeTypeByExtension(name) ?? contentType;
-          const meta: any = {};
-          if (mime?.startsWith("video/")) {
-            meta.fileType = "video";
-            const video = await getVideoDimensionsFromLocalFile(tempFilePath);
-            meta.width = video.width;
-            meta.height = video.height;
-            meta.duration = video.duration;
-            if (user.preferences?.generateVideoPreviews) {
-              const thumbnail = await captureFrameFromTimestampFromLocalFile(
-                tempFilePath,
-                name,
-                20,
-              ).catch(console.error); // ignore error for thumbnail
-              if (thumbnail) {
-                const filename = `preview_${nanoid()}.jpg`;
-                await api.media
-                  .upload(thumbnail, {
-                    filename,
-                  })
-                  .catch(console.error); // ignore error for thumbnail
-                meta.preview = filename;
-              }
-            }
-          }
-
-          if (mime?.startsWith("image/")) {
-            meta.fileType = "image";
-            const image = await getImageDimensions(file);
-            meta.width = image.width;
-            meta.height = image.height;
-            if (
-              user.preferences?.generateImagePreviews &&
-              (Number(contentLength) || size) > 1024 * 1024 * 5
-            ) {
-              const thumbnail = await getImageThumbnail(file, name).catch(
-                console.error,
-              );
-              if (thumbnail) {
-                const filename = `preview_${nanoid()}${ext}`;
-                await api.media.upload(thumbnail, {
-                  filename,
-                });
-                meta.preview = filename;
-              }
-            }
-          }
-
-          await api.data.createOne("nodes", {
-            name: decodeURIComponent(name),
-            type: "FILE",
-            users_id: user.id as string,
-            media_id: (data as unknown as DB["media"]).id as string,
-            parent_id: body.folderId ?? undefined,
-            mime_type: mime || "application/octet-stream",
-            metadata: {
-              size,
-              ...(meta.fileType ? meta : undefined),
-            },
-          });
-        } catch (error) {
-          console.error("Error processing file stream:", error);
-        } finally {
-          // Clean up temp file from filesystem
-          await unlink(tempFilePath).catch(() => {});
-        }
-      });
-    });
-
-    server.get("/api/data/breadcrumbs", async (c) => {
+    app.server.get("/api/data/breadcrumbs", async (c) => {
       const folderId = c.req.query("folderId");
       if (!folderId) return c.json({ message: "'folderId' is required" });
       const data = await getBreadcrumbs(db, folderId);
       return c.json({ data });
     });
 
-    server.get("/api/storage-usage", async (c) => {
+    app.server.get("/api/storage-usage", async (c) => {
       const headers = c.req.raw.headers;
 
       const api = app.getApi({ headers });
@@ -312,7 +147,7 @@ export default {
       return c.json({ size: await getStoaredDataSize(db, String(user.id)) });
     });
 
-    server.post("/api/delete", async (c) => {
+    app.server.post("/api/delete", async (c) => {
       const headers = c.req.raw.headers;
 
       const api = app.getApi({ headers });
@@ -340,138 +175,6 @@ export default {
       return c.json({
         sucess: true,
         message: "files/folder deleted successfully",
-      });
-    });
-
-    server.post("/api/convert", async (c) => {
-      const headers = c.req.raw.headers;
-
-      const api = app.getApi({ headers });
-      await api.verifyAuth();
-      const { user } = await api.auth.me();
-
-      const verifiedUser = api.isAuthVerified() && api.isAuthenticated();
-
-      if (!verifiedUser || !user) {
-        return c.json(
-          { error: true, message: "unauthorized access" },
-          401, // UNAUTHORIZED,
-        );
-      }
-      const body = await c.req.json<{
-        id?: string;
-        resolution?: string;
-      }>();
-
-      if (!body.id || !body.resolution) {
-        return c.json({
-          error: true,
-          message: "('id'|'resolution') is required",
-        });
-      }
-
-      const { data: node } = await api.data.readOne("nodes", body.id, {
-        with: ["media"],
-      });
-      if (!node) return c.json({ error: true, message: "file not found" }, 404);
-
-      if (
-        node.type !== "FILE" ||
-        !node.media_id ||
-        node.metadata.fileType !== "video"
-      ) {
-        console.log({ node, id: body.id });
-        return c.json(
-          { error: true, message: "only video files are convertible" },
-          422, // Unprocessable Entity,
-        );
-      }
-      const ext =
-        node.name.lastIndexOf(".") !== -1
-          ? node.name.slice(node.name.lastIndexOf("."))
-          : "";
-      const resolutionWithoutP = body.resolution.endsWith("p")
-        ? body.resolution.slice(0, body.resolution.length - 1)
-        : body.resolution;
-
-      const tempFilePath = path.join(tmpdir(), `${nanoid()}${ext}`);
-      const tempFileOutputPath = path.join(
-        tmpdir(),
-        `${body.resolution}_${nanoid()}${ext}`,
-      );
-
-      try {
-        const file = await api.media.download(node.media!.path);
-        const buffer = await file.arrayBuffer();
-
-        await writeFile(tempFilePath, Buffer.from(buffer));
-        await convertVideo(
-          tempFilePath,
-          tempFileOutputPath,
-          resolutionWithoutP,
-        );
-
-        const convertedBuffer = await readFile(tempFileOutputPath);
-
-        const convertedFile = new File([convertedBuffer], body.id + ext, {
-          type: node.mime_type,
-        });
-
-        const { data } = await api.media.upload(convertedFile, {
-          filename: `${nanoid()}${ext}`,
-        });
-        const stats = await stat(tempFileOutputPath);
-
-        const meta: any = {};
-        meta.fileType = "video";
-        const video = await getVideoDimensionsFromLocalFile(tempFileOutputPath);
-        meta.width = video.width;
-        meta.height = video.height;
-        meta.duration = video.duration;
-        if (user.preferences?.generateVideoPreviews) {
-          const thumbnail = await captureFrameFromTimestampFromLocalFile(
-            tempFileOutputPath,
-            node.name,
-            20,
-          ).catch(console.error); // ignore error for thumbnail
-          if (thumbnail) {
-            const filename = `preview_${nanoid()}.jpg`;
-            await api.media
-              .upload(thumbnail, {
-                filename,
-              })
-              .catch(console.error); // ignore error for thumbnail
-            meta.preview = filename;
-          }
-        }
-
-        await api.data.createOne("nodes", {
-          name: `${body.resolution}_${node.name}`,
-          type: "FILE",
-          users_id: user.id as string,
-          media_id: (data as unknown as DB["media"]).id as string,
-          parent_id: node.parent_id ?? undefined,
-          mime_type: node.mime_type,
-          metadata: {
-            size: stats.size,
-            ...(meta.fileType ? meta : undefined),
-          },
-        });
-      } catch (error) {
-        console.error(error);
-        return c.json({
-          error: true,
-          message:
-            error instanceof Error ? error.message : "video convertion failed",
-        });
-      } finally {
-        await unlink(tempFilePath);
-        await unlink(tempFileOutputPath);
-      }
-
-      return c.json({
-        sucess: true,
-        message: "video converted",
       });
     });
   },
@@ -603,48 +306,4 @@ async function getStoaredDataSize(db: Kysely<DB>, userId: string) {
     .select(() => [sumJsonField("metadata", "size")(db).as("total_size")])
     .executeTakeFirst();
   return result;
-}
-
-async function convertVideo(
-  inputPath: string,
-  outputPath: string,
-  resolution: string,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const args: string[] = [
-      "-i",
-      inputPath,
-      "-vf",
-      `scale=-2:${resolution}`,
-      "-c:v",
-      "libx264",
-      "-c:a",
-      "aac",
-      outputPath,
-    ];
-
-    const ffmpeg = spawn("ffmpeg", args);
-
-    ffmpeg.stdin.end();
-
-    ffmpeg.stdout.on("data", (data: Buffer) => {
-      console.log(`stdout: ${data}`);
-    });
-
-    ffmpeg.stderr.on("data", (data: Buffer) => {
-      console.error(`stderr: ${data}`);
-    });
-
-    ffmpeg.on("close", (code: number | null) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`FFmpeg process exited with code ${code}`));
-      }
-    });
-
-    ffmpeg.on("error", (err: Error) => {
-      reject(err);
-    });
-  });
 }

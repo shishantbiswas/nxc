@@ -8,6 +8,7 @@ declare global {
 }
 
 export type UserPreferences = {
+  favicon?: string;
   wallpaper?: string;
   hideDotfiles?: boolean;
   generateImagePreviews?: boolean;

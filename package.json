@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsr generate && bun --bun vite",
-    "clean": "rm -rf uploads/* ./data.db*",
+    "clean": "rm -rf uploads/* ./dev.db*",
     "build": "vite build",
     "serve": "NODE_ENV=production bun --bun dist/server/server.js",
     "lint": "biome lint",
@@ -21,7 +21,6 @@
     "hono": "^4.13.8",
     "mime": "^4.1.0",
     "nanoid": "^6.0.1",
-    "pg": "^8.23.0",
     "sharp": "^0.35.5",
     "zod": "^4.6.5"
   },
@@ -30,7 +29,7 @@
     "@hookform/resolvers": "^5.9.1",
     "@biomejs/biome": "2.5.14",
     "@uidotdev/usehooks": "^2.4.1",
-    "@rolldown/plugin-babel": "^0.2.3",
+    "@rolldown/plugin-babel": "^0.2.4",
     "@hono/vite-dev-server": "^0.26.1",
     "react": "^19.2.8",
     "@tailwindcss/vite": "^4.3.3",
@@ -53,7 +52,6 @@
     "react-hook-form": "^7.88.0",
     "react-hot-toast": "^2.6.1",
     "react-markdown": "^10.1.0",
-    "reflow-ts": "^0.7.0",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gemoji": "^8.0.0",

@@ -1,15 +1,17 @@
 import { createClient } from "@libsql/client";
-import { libsql, pg } from "bknd";
-import { bunSqlite, registerLocalMediaAdapter } from "bknd/adapter/bun";
-import { Pool } from "pg";
+import { libsql } from "bknd";
+import {
+  //bunSqlite,
+  registerLocalMediaAdapter,
+} from "bknd/adapter/bun";
 import { z } from "zod";
 
 const schema = z.object({
   db: z.enum([
-    "libsql-remote",
-    "postgres",
-    "sqlite",
+    // "postgres",
+    // "sqlite",
     "libsql",
+    "libsql-remote",
     "libsql-remote-embedded-replicas",
   ]),
   storage: z.enum(["S3", "local"]),
@@ -33,17 +35,12 @@ if (!success || error) throw new Error(error.message);
 
 export const getDB = () => {
   switch (data.db) {
-    case "postgres":
-      if (!process.env.POSTGRES_URL) {
-        throw new Error(
-          "Database postgres doesn't have a valid postgres connection string\nPlease add a env var like `POSTGRES_URL=postgresql://user:password@localhost:5432/database`",
-        );
-      }
-      return pg({
-        pool: new Pool({
-          connectionString: process.env.POSTGRES_URL,
+    case "libsql":
+      return libsql(
+        createClient({
+          url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
         }),
-      });
+      );
     case "libsql-remote": {
       if (!process.env.LIBSQL_URL || !process.env.LIBSQL_TOKEN) {
         throw new Error(
@@ -72,22 +69,29 @@ export const getDB = () => {
         }),
       );
     }
-    case "libsql":
-      return libsql(
-        createClient({
-          url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
-        }),
-      );
-    case "sqlite":
-      return bunSqlite({
-        url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
-        onCreateConnection: (db) => {
-          db.run("PRAGMA journal_mode = WAL;");
-          db.run("PRAGMA synchronous = NORMAL;");
-          db.run("PRAGMA busy_timeout = 5000;");
-          db.run("PRAGMA foreign_keys = ON;");
-        },
-      });
+    // case "sqlite":
+    //   return bunSqlite({
+    //     url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
+    //     onCreateConnection: async (db) => {
+    //       // const load = await import("sqlite-vec").then((mod) => mod.load);
+    //       // load(db);
+    //       db.run("PRAGMA journal_mode = WAL;");
+    //       db.run("PRAGMA synchronous = NORMAL;");
+    //       db.run("PRAGMA busy_timeout = 5000;");
+    //       db.run("PRAGMA foreign_keys = ON;");
+    //     },
+    //   });
+    // case "postgres":
+    //   if (!process.env.POSTGRES_URL) {
+    //     throw new Error(
+    //       "Database postgres doesn't have a valid postgres connection string\nPlease add a env var like `POSTGRES_URL=postgresql://user:password@localhost:5432/database`",
+    //     );
+    //   }
+    //   return pg({
+    //     pool: new Pool({
+    //       connectionString: process.env.POSTGRES_URL,
+    //     }),
+    //   });
   }
 };
 

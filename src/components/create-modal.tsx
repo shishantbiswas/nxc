@@ -1,6 +1,6 @@
+"use no memo";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Link,
   useNavigate,
   useRouteContext,
   useRouter,
@@ -11,7 +11,9 @@ import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { useSnapshot } from "valtio/react";
 import { type UploadSchema, uploadSchema } from "../schema/upload-schema";
+import { modalStore } from "../store/modal";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 import { createFolder } from "../utils/create-folder";
@@ -20,11 +22,11 @@ import bytesToSize from "../utils/format-bytes";
 import { useToast } from "./toast-provider";
 
 export function CreateModal() {
-  const navigate = useNavigate();
-  const sp = useSearch({ strict: false });
+  const modal = useSnapshot(modalStore);
+  const isOpen = ["FILE", "FOLDER"].includes(modal.type ?? "");
 
   return (
-    <dialog className={cn("modal", sp.create && "modal-open")}>
+    <dialog className={cn("modal", isOpen && "modal-open")}>
       {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
       <div
         tabIndex={-1}
@@ -32,30 +34,29 @@ export function CreateModal() {
         className="modal-box p-0 focus:outline-none"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
-            navigate({
-              to: ".",
-              search: (pre) => ({ ...pre, create: undefined }),
-            });
+            modalStore.setType(null);
           }
         }}
       >
-        <CreateForm type={sp.create} />
+        <CreateForm type={modalStore.type} />
       </div>
       <div className="modal-backdrop backdrop-blur-xs flex flex-col">
         <div></div>
-        <Link
-          to="."
+        <button
+          type="button"
           className="min-h-[calc(100%-3rem)]"
-          search={(pre) => ({ ...pre, create: undefined })}
+          onClick={() => {
+            modalStore.setType(null);
+          }}
         >
           close
-        </Link>
+        </button>
       </div>
     </dialog>
   );
 }
 
-export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
+export function CreateForm({ type }: { type: typeof modalStore.type }) {
   const sp = useSearch({ strict: false });
   const navigate = useNavigate();
   const router = useRouter();
@@ -120,10 +121,7 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
         });
 
         toast.info("Added files to upload queue", { duration: 3500 });
-        navigate({
-          to: ".",
-          search: (prev) => ({ ...prev, create: undefined }),
-        });
+        modalStore.setType(null);
       } else {
         const folderName = form.data.folderName;
         const folder = await createFolder({
@@ -140,10 +138,10 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
           to: ".",
           search: (pre) => ({
             ...pre,
-            create: undefined,
             folderId: folder.folderId ?? undefined,
           }),
         });
+        modalStore.setType(null);
       }
       return;
     }
@@ -157,11 +155,11 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
         folderId,
         onSucess: (data) => {
           toast.success(`${data.name} finished uploading`);
-          router.invalidate()
+          router.invalidate();
         },
         onError: (error) => {
           toast.error(`${error} finished uploading`);
-          router.invalidate()
+          router.invalidate();
         },
         onFinish: ({
           completedSuccessfully,
@@ -175,14 +173,11 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
           if (completedSuccessfully) {
             toast.success(`${sucessCount} files uploaded`);
           }
-          router.invalidate()
+          router.invalidate();
         },
       });
       toast.info("Added to queue");
-      navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, create: undefined }),
-      });
+      modalStore.setType(null);
     } else {
       const files = form.data.files;
       uploadStore.startUpload({
@@ -190,11 +185,11 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
         folderId,
         onSucess: (node) => {
           toast.success(`${node.name} finished uploading`);
-          router.invalidate()
+          router.invalidate();
         },
         onError: (error) => {
           toast.error(`${error} finished uploading`);
-          router.invalidate()
+          router.invalidate();
         },
         onFinish: ({
           completedSuccessfully,
@@ -208,15 +203,11 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
           if (completedSuccessfully) {
             toast.success(`${sucessCount} files uploaded`);
           }
-          router.invalidate()
-
+          router.invalidate();
         },
       });
       toast.info("Added to queue");
-      navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, create: undefined }),
-      });
+      modalStore.setType(null);
     }
   };
 
@@ -334,13 +325,13 @@ function FileFolderStaticAlert() {
         <p>
           Want to upload just files ? <br />
           Use{" "}
-          <Link
+          <button
+            type="button"
             className="link"
-            to="."
-            search={(pre) => ({ ...pre, create: "FILE" })}
+            onClick={() => modalStore.setType("FILE")}
           >
             Upload Files
-          </Link>{" "}
+          </button>{" "}
           to ignore folder structure and upload files only
         </p>
       </div>
@@ -351,13 +342,13 @@ function FileFolderStaticAlert() {
       <InfoIcon size={10} />
       <p>
         Uploading folders here will only upload it's file use{" "}
-        <Link
+        <button
+          type="button"
           className="link"
-          to="."
-          search={(pre) => ({ ...pre, create: "FOLDER" })}
+          onClick={() => modalStore.setType("FOLDER")}
         >
           Upload Folder
-        </Link>{" "}
+        </button>{" "}
         to retain the folder structure
       </p>
     </div>

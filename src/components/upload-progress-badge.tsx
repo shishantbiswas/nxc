@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Upload } from "lucide-react";
-import { useSnapshot } from "valtio";
+import { useSnapshot } from "valtio/react";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 

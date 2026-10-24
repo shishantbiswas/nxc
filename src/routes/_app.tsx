@@ -34,6 +34,7 @@ import { Sidebar } from "../components/sidebar";
 import { useTheme } from "../components/theme-provider";
 import { UploadIndicator } from "../components/upload-progress-badge";
 import { api } from "../lib/bknd";
+import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 
 export const Route = createFileRoute("/_app")({
@@ -67,6 +68,17 @@ export const Route = createFileRoute("/_app")({
       breadcrumbs,
     };
   },
+  head: ({ match }) => {
+    const customIcon = match.context.user.preferences?.favicon;
+    return {
+      links: [
+        {
+          rel: "icon",
+          href: customIcon ?? "/favicon.svg",
+        },
+      ],
+    };
+  },
 });
 
 function AppLayout() {
@@ -80,7 +92,7 @@ function AppLayout() {
         alt=""
       />
       <main className="h-screen md:p-4 z-50">
-        <div className=" md:h-[calc(100vh-2rem)]! flex bg-base-100/60 backdrop-blur-xl  md:rounded-xl overflow-hidden">
+        <div className=" md:h-[calc(100vh-2rem)]! flex bg-base-100/60 backdrop-blur-xl md:rounded-xl overflow-hidden">
           <Sidebar />
           <section className="w-full h-screen relative">
             <Topbar />
@@ -222,7 +234,7 @@ function MobileDock() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="dock bg-transparent md:hidden rounded-none">
+    <div className="dock md:hidden rounded-none">
       <Link to="/" className={cn(localtion.pathname === "/" && "dock-active")}>
         <button
           type="button"
@@ -289,24 +301,30 @@ function Topbar() {
         </ul>
       </div>
       <div className="flex items-center justify-center gap-4">
-        <Link to="." search={{ create: "FILE" }}>
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
-            data-tip={"New File"}
-          >
-            <Plus className="size-5 swap-off" />
-          </button>
-        </Link>
-        <Link to="." search={{ create: "FOLDER" }}>
-          <button
-            type="button"
-            className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
-            data-tip={"New Folder"}
-          >
-            <FolderPlus className="size-5 swap-off" />
-          </button>
-        </Link>
+        {/* <Link to="." search={(pre) => ({ ...pre, create: "FILE" })}> */}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
+          data-tip={"New File"}
+          onClick={() => {
+            modalStore.setType("FILE");
+          }}
+        >
+          <Plus className="size-5 swap-off" />
+        </button>
+        {/* </Link> */}
+        {/* <Link to="." search={(pre) => ({ ...pre, create: "FOLDER" })}> */}
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
+          data-tip={"New Folder"}
+          onClick={() => {
+            modalStore.setType("FOLDER");
+          }}
+        >
+          <FolderPlus className="size-5 swap-off" />
+        </button>
+        {/* </Link> */}
         <UploadIndicator />
         <button
           type="button"

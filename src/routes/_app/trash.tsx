@@ -34,6 +34,13 @@ export const Route = createFileRoute("/_app/trash")({
       isEmpty: entries.length > 0,
     };
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Trash",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {
@@ -46,7 +53,6 @@ function RouteComponent() {
   }
   return (
     <>
-      <title>Trash</title>
       {!isEmpty ? (
         <div className="h-[70vh] flex items-center">
           <Empty
@@ -171,7 +177,7 @@ function NodeTable({
                         body: JSON.stringify({ id: node.id, type: node.type }),
                       });
                       const json = await res.json();
-                      console.log({ json });
+                      // console.log({ json });
                       router.invalidate();
                       toast.info(`${node.type} deleted`);
                     }}

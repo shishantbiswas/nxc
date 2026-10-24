@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import type { Nodes } from "../../bknd-types";
 import { getFileIconByMimeType } from "../lib/get-file-icon-by-mime-type";
@@ -20,7 +20,9 @@ export function FileTile({
     "portrait" | "landscape" | "text bottom" | "text top"
   >("tile-style", "portrait");
 
+  const { user } = useRouteContext({ strict: false });
   const FilePreview = getFilePreviewByMimeType({
+    user,
     node: file,
     previewClassName: NON_LANDSCAPE.includes(tileStyle)
       ? "size-none h-32! w-full object-cover rounded"

@@ -24,11 +24,11 @@ type Progress = {
 export interface FileTask {
   id: string;
   name: string;
-  type: "URL" | "DIRECT";
+  type: "URL" | "FILE" | "CONVERT";
   path: string;
   size: number;
   progress: Progress;
-  status: "pending" | "uploading" | "completed" | "error";
+  status: "pending" | "uploading" | "completed" | "error" | "converting";
   error?: string;
 }
 
@@ -65,12 +65,48 @@ export const uploadStore = proxy<{
     }) => void;
     onError?: (msg: string) => void;
   }) => Promise<void>;
+
+  beginVideoConvert: (opt: {
+    name: string;
+    id: string;
+    resolution: string;
+  }) => Promise<void>;
   cancelTask: (id: string) => void;
 
   clearCompleted: () => void;
-
 }>({
   tasks: {},
+
+  beginVideoConvert: async ({ id, resolution, name }) => {
+    const newTasks: FileTask = {
+      id,
+      name,
+      type: "CONVERT",
+      path: name,
+      progress: { percentage: 0, totalBytes: 0, totalTransfered: 0 },
+      size: 0,
+      status: "converting",
+    };
+    Object.assign(uploadStore.tasks, { [id]: newTasks });
+    const taskUpload = uploadStore.tasks[id];
+    const res = await fetch("/api/convert", {
+      method: "POST",
+      body: JSON.stringify({
+        id,
+        resolution,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.sucess) {
+      taskUpload.status = "completed";
+      taskUpload.progress.percentage = 100;
+      taskUpload.progress.totalBytes = 0;
+      taskUpload.progress.totalTransfered = 0;
+    } else {
+      taskUpload.status = "error";
+    }
+  },
 
   async startUpload({ files, folderId, onSucess, onError, onFinish }) {
     const newTasks: Record<string, FileTask> = {};
@@ -94,7 +130,7 @@ export const uploadStore = proxy<{
         name: file.name,
         path: file.webkitRelativePath || file.name,
         size: file.size,
-        type: "DIRECT",
+        type: "FILE",
         progress: { percentage: 0, totalBytes: file.size, totalTransfered: 0 },
         status: "pending",
       };
@@ -203,7 +239,6 @@ export const uploadStore = proxy<{
         onError?.(errMsg);
       } finally {
         URL.revokeObjectURL(metaUrl);
-        toast.success("All uploads are finished");
       }
     }
     const tasks = Object.values(uploadStore.tasks);

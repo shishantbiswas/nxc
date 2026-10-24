@@ -1,4 +1,4 @@
-import { useRouteContext } from "@tanstack/react-router";
+import type { SafeUser } from "bknd";
 import type React from "react";
 import type { Nodes } from "../../bknd-types";
 import { IMAGE_PREVIEW_SIZE } from "../constants";
@@ -10,14 +10,14 @@ export function getFilePreviewByMimeType({
   className,
   iconClassName,
   previewClassName,
+  user,
 }: {
   node: Omit<Nodes, "id"> & { id: string };
   className?: string;
+  user: SafeUser | undefined;
   iconClassName?: string;
   previewClassName?: string;
 }): React.ReactNode {
-  // biome-ignore lint/correctness/useHookAtTopLevel: false positive
-  const { user } = useRouteContext({ from: "/_app" });
   const FileIcon = getFileIconByMimeType(node.mime_type);
 
   switch (node.mime_type) {
@@ -41,7 +41,10 @@ export function getFilePreviewByMimeType({
           />
         );
       } else {
-        if (!user.preferences?.generateImagePreviews || !('preview' in node.metadata)) {
+        if (
+          !user?.preferences?.generateImagePreviews ||
+          !("preview" in node.metadata)
+        ) {
           return <FileIcon className={cn("shrink-0 size-10", iconClassName)} />;
         }
 
@@ -61,7 +64,10 @@ export function getFilePreviewByMimeType({
     case "video/mp4":
     case "video/webm":
     case "video/quicktime": {
-      if (!user.preferences?.generateVideoPreviews || !('preview' in node.metadata))
+      if (
+        !user?.preferences?.generateVideoPreviews ||
+        !("preview" in node.metadata)
+      )
         return (
           <FileIcon
             className={cn("shrink-0 size-10", className, iconClassName)}

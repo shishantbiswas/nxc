@@ -36,6 +36,13 @@ export const Route = createFileRoute("/_app/video")({
 
     return { entries, isEmpty: entries.length > 0 };
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Video",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {

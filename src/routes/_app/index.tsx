@@ -69,6 +69,13 @@ export const Route = createFileRoute("/_app/")({
       isEmpty: entries.length === 0,
     };
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Home",
+      },
+    ],
+  }),
 });
 
 function Index() {
@@ -83,7 +90,6 @@ function Index() {
   }
   return (
     <>
-      <title>Home</title>
       <div className="flex items-center justify-between">
         <div></div>
         <div>
@@ -161,6 +167,8 @@ function NodeTable({
 }: {
   nodes: (Omit<Nodes, "id"> & { id: string })[];
 }) {
+  const { user } = useRouteContext({ from: "/_app" });
+
   return (
     <table className="table ">
       <thead>
@@ -177,7 +185,7 @@ function NodeTable({
       </thead>
       <tbody>
         {nodes.map((node) => {
-          const FilePreview = getFilePreviewByMimeType({ node });
+          const FilePreview = getFilePreviewByMimeType({ node, user });
 
           return (
             <tr key={node.id} className="group">
