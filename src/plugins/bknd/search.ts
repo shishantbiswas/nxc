@@ -69,7 +69,17 @@ export const searchPlugin: AppPlugin = (app) => ({
           401, // UNAUTHORIZED,
         );
       }
-      return c.json({ result: await searchFiles(db, search) });
+      const ftsRes = await searchFiles(db, search);
+      const ids = ftsRes.map((it) => it.id);
+
+      const { data } = await api.data.readMany("nodes", {
+        with: ["media"],
+        where: {
+          id: { $in: ids },
+        },
+      });
+
+      return c.json({ result: data as (Omit<Nodes, "id"> & { id: string })[] });
     });
   },
 });

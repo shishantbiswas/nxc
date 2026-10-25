@@ -23,8 +23,7 @@ import { useToast } from "./toast-provider";
 
 export function CreateModal() {
   const modal = useSnapshot(modalStore);
-  const isOpen = ["FILE", "FOLDER"].includes(modal.type ?? "");
-
+  const isOpen = ["FILE:UPLOAD", "FOLDER:UPLOAD"].includes(modal.type ?? "");
   return (
     <dialog className={cn("modal", isOpen && "modal-open")}>
       {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
@@ -38,7 +37,7 @@ export function CreateModal() {
           }
         }}
       >
-        <CreateForm type={modalStore.type} />
+        <CreateForm type={modal.type} />
       </div>
       <div className="modal-backdrop backdrop-blur-xs flex flex-col">
         <div></div>
@@ -60,21 +59,21 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
   const sp = useSearch({ strict: false });
   const navigate = useNavigate();
   const router = useRouter();
+  const toast = useToast();
+  const { user } = useRouteContext({ from: "/_app" });
   const form = useForm({
     resolver: zodResolver(uploadSchema),
   });
 
   useEffect(() => {
-    if (type) {
-      form.setValue("create", type);
+    if (type && type === "FILE:UPLOAD") {
+      form.setValue("create", "FILE");
+    } else if (type && type === "FOLDER:UPLOAD") {
+      form.setValue("create", "FOLDER");
     } else {
       form.reset();
     }
   }, [type, form]);
-
-  const toast = useToast();
-
-  const { user } = useRouteContext({ from: "/_app" });
 
   const onSubmit = async (form: UploadSchema) => {
     if (!user) {
@@ -220,11 +219,7 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
         className="flex flex-col gap-4 p-4"
       >
         <div className="form-control w-full">
-          {type === "FILE" || type === "FOLDER" ? (
-            <FilesForm />
-          ) : (
-            <CreateFormByType />
-          )}
+          {["FILE:UPLOAD", "FOLDER:UPLOAD"].includes(type) && <FilesForm />}
         </div>
 
         <button
@@ -239,30 +234,30 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
   );
 }
 
-function CreateFormByType() {
-  const form = useFormContext<UploadSchema>();
-  const type = form.watch("create");
-
-  return (
-    <fieldset>
-      <label
-        className="capitalize label select-none"
-        htmlFor={`form_input_${type}`}
-      >
-        Create {type.toLocaleLowerCase()}
-      </label>
-      <input
-        id={`form_input_${type}`}
-        defaultValue=""
-        className="input w-full"
-        {...form.register("data")}
-      />
-      {form.formState.errors.data?.message && (
-        <p className=" mt-2 px-2">{form.formState.errors.data?.message}</p>
-      )}
-    </fieldset>
-  );
-}
+// function CreateFormByType() {
+//   const form = useFormContext<UploadSchema>();
+//   const type = form.watch("create");
+//   console.log(type);
+//   return (
+//     <fieldset>
+//       <label
+//         className="capitalize label select-none"
+//         htmlFor={`form_input_${type}`}
+//       >
+//         Create {type.toLocaleLowerCase()}
+//       </label>
+//       <input
+//         id={`form_input_${type}`}
+//         defaultValue=""
+//         className="input w-full"
+//         {...form.register("data")}
+//       />
+//       {form.formState.errors.data?.message && (
+//         <p className=" mt-2 px-2">{form.formState.errors.data?.message}</p>
+//       )}
+//     </fieldset>
+//   );
+// }
 
 function FilesForm() {
   const form = useFormContext<UploadSchema>();
@@ -328,7 +323,7 @@ function FileFolderStaticAlert() {
           <button
             type="button"
             className="link"
-            onClick={() => modalStore.setType("FILE")}
+            onClick={() => modalStore.setType("FILE:UPLOAD")}
           >
             Upload Files
           </button>{" "}
@@ -345,7 +340,7 @@ function FileFolderStaticAlert() {
         <button
           type="button"
           className="link"
-          onClick={() => modalStore.setType("FOLDER")}
+          onClick={() => modalStore.setType("FOLDER:UPLOAD")}
         >
           Upload Folder
         </button>{" "}

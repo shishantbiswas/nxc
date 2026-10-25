@@ -19,6 +19,7 @@ import {
 import { toast } from "react-hot-toast";
 import useSWRImmutable from "swr/immutable";
 import { useUser } from "../hooks/useUser";
+import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import bytesToSize from "../utils/format-bytes";
 import { FAB } from "./fab";
@@ -58,6 +59,7 @@ export function Sidebar() {
           >
             <button
               type="button"
+              onClick={() => modalStore.setType("SEARCH")}
               className="input input-sm input-ghost hover:bg-base-300 focus:bg-base-300 cursor-pointer transition-colors focus:outline-none group-data-[expanded=false]:hidden"
             >
               <span className="grow text-left">Search…</span>

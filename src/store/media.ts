@@ -1,5 +1,5 @@
 import { proxy } from "valtio";
 
-export const uploadStore = proxy<{}>({
+export const mediaStore = proxy<{}>({
     
 })

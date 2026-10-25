@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import { toast } from "react-hot-toast";
-import { proxy } from "valtio";
+import { proxy, subscribe } from "valtio";
 import type { Nodes } from "../../bknd-types";
 import { IMAGE_PREVIEW_SIZE } from "../constants";
 import { api } from "../lib/bknd";
@@ -348,3 +348,4 @@ export const uploadStore = proxy<{
     });
   },
 });
+

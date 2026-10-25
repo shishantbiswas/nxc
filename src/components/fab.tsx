@@ -14,7 +14,7 @@ export function FAB() {
           type="button"
           className="btn btn-lg btn-circle "
           onClick={() => {
-            modalStore.setType("FILE");
+            modalStore.setType("FILE:UPLOAD");
           }}
         >
           <Upload size={14} />
@@ -25,7 +25,7 @@ export function FAB() {
           type="button"
           className="btn btn-lg btn-circle"
           onClick={() => {
-            modalStore.setType("FOLDER");
+            modalStore.setType("FOLDER:UPLOAD");
           }}
         >
           <FolderPlus size={14} />

@@ -2,8 +2,10 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { Folder } from "lucide-react";
 import { useState } from "react";
+import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../bknd-types";
 import { api } from "../lib/bknd";
+import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import { NodeDropdown } from "./node-dropdown";
 
@@ -15,6 +17,7 @@ export function FolderTile({
   const [tileStyle] = useLocalStorage<
     "portrait" | "landscape" | "text bottom" | "text top"
   >("tile-style", "portrait");
+  const { selectedNodes, setSelectedNodes } = useSnapshot(modalStore);
 
   const router = useRouter();
   const handleDragStart = (e: React.DragEvent<HTMLAnchorElement>) => {
@@ -42,7 +45,7 @@ export function FolderTile({
         className={cn(
           "flex w-full p-2 bg-neutral/10 hover:bg-neutral/20 rounded-lg group",
           tileStyle === "text bottom" ? "flex-col" : "flex-col-reverse",
-          isDragOver ? 'bg-neutral/40' : 'hover:bg-neutral/20'
+          isDragOver ? "bg-neutral/40" : "hover:bg-neutral/20",
         )}
       >
         <Link
@@ -62,7 +65,9 @@ export function FolderTile({
           className="flex flex-col h-32! items-center justify-center "
         >
           <Folder className="size-10 shrink-0" />
-          <p className="text-sm truncate text-wrap text-center px-4">{folder.name}</p>
+          <p className="text-sm truncate text-wrap text-center px-4">
+            {folder.name}
+          </p>
         </Link>
         <div
           className={cn(
@@ -70,6 +75,23 @@ export function FolderTile({
             tileStyle === "text bottom" ? "mt-2" : "mb-2",
           )}
         >
+          <input
+            type="checkbox"
+            className={cn(
+              "checkbox checkbox-sm  group-hover:block",
+              selectedNodes.length === 0 && "hidden",
+            )}
+            checked={selectedNodes.includes(folder.id)}
+            onChange={() => {
+              if (selectedNodes.includes(folder.id)) {
+                const filtered = selectedNodes.filter((e) => e !== folder.id);
+                setSelectedNodes(filtered);
+              } else {
+                const filtered = [...selectedNodes, folder.id];
+                setSelectedNodes(filtered);
+              }
+            }}
+          />
           <Folder className="size-4" />
           <p className="truncate min-w-0 flex-1 pr-8 opacity-70 group-hover:opacity-100 ">
             {folder.name}
@@ -93,7 +115,7 @@ export function FolderTile({
         onDrop={handleOnDrag}
         onDragOver={(e) => {
           e.preventDefault();
-          setIsDragOver(true);  
+          setIsDragOver(true);
         }}
         onDragLeave={() => setIsDragOver(false)}
         className="flex items-center justify-start gap-4 w-[calc(100%-2.5rem)] px-3 py-2"

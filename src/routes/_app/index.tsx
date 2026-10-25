@@ -1,4 +1,9 @@
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import type { RepoQueryIn } from "bknd";
 import { Empty } from "../../components/empty";
 import { FileTile } from "../../components/file-entry";
@@ -7,9 +12,12 @@ import { api } from "../../lib/bknd";
 import "github-markdown-css/github-markdown.css";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { Folder, Grid3X3, TableProperties } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../../bknd-types";
 import { NodeDropdown } from "../../components/node-dropdown";
 import { getFilePreviewByMimeType } from "../../lib/get-file-preview-by-mime-type";
+import { modalStore } from "../../store/modal";
 import bytesToSize from "../../utils/format-bytes";
 import { getTimeBasedGreeting } from "../../utils/time-based-greeting";
 
@@ -83,16 +91,59 @@ function Index() {
   const { folderId } = Route.useSearch();
   const { user, breadcrumbs } = useRouteContext({ from: "/_app" });
   const [grid, setGrid] = useLocalStorage("layout", true);
+  const { selectedNodes } = useSnapshot(modalStore);
+
   if (!Array.isArray(entries) || "error" in entries) {
     throw new Error(
       `Fatal Error Occoured ${entries.error ?? "entries is not a array"}`,
     );
   }
+  const router = useRouter();
+
   return (
     <>
       <div className="flex items-center justify-between">
         <div></div>
-        <div>
+        <div className="flex items-center gap-2">
+          {selectedNodes.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="btn btn-sm text-sm!"
+                onClick={() => modalStore.setType("FILE:MOVE")}
+              >
+                Move To ({selectedNodes.length})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm text-sm! btn-error"
+                // onClick={() => modalStore.setType("FILE:DELETE")}
+                onClick={async () => {
+                  await api.data
+                    .updateMany(
+                      "nodes",
+                      {
+                        id: { $in: [...selectedNodes] },
+                      },
+                      { deleted_at: new Date() },
+                    )
+                    .then(() => {
+                      toast(`Trashed ${selectedNodes.length} Files/Folder`);
+                      modalStore.setSelectedNodes([]);
+                      modalStore.setType(null);
+                      router.invalidate();
+                    })
+                    .catch(() => {
+                      toast.error(
+                        `Error deleting ${selectedNodes.length} Files/Folder`,
+                      );
+                    });
+                }}
+              >
+                Delete ({selectedNodes.length})
+              </button>
+            </>
+          )}
           <label
             className="btn btn-square swap swap-rotate tooltip hover:tooltip-open tooltip-left"
             data-tip={`Swap to ${grid ? "Table" : "Grid"} View`}
@@ -141,12 +192,12 @@ function NodeGrid({
   nodes: (Omit<Nodes, "id"> & { id: string })[];
 }) {
   return (
-    <main className="@container mt-4">
+    <main className="@container mt-4  pb-18">
       <ul className="grid @sm:grid-cols-2 @lg:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5 @7xl:grid-cols-6 gap-4 pb-12 md:p-0">
         {nodes?.map((node) => (
           <li
             key={node.id}
-            className="flex items-center pl-0 text-nowrap min-w-0"
+            className="flex items-center pl-0 text-nowrap min-w-0 relative"
           >
             <div className="flex items-center gap-4 min-w-0 w-full ">
               {node.type === "FOLDER" ? (
@@ -168,18 +219,38 @@ function NodeTable({
   nodes: (Omit<Nodes, "id"> & { id: string })[];
 }) {
   const { user } = useRouteContext({ from: "/_app" });
+  const { selectedNodes, setSelectedNodes } = useSnapshot(modalStore);
 
   return (
-    <table className="table ">
+    <table className="table pb-12">
       <thead>
         <tr>
-          {/* <th>
+          <th>
             <label>
-              <input type="checkbox" className="checkbox" />
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={selectedNodes.length === nodes.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedNodes(nodes.map((node) => node.id));
+                  } else {
+                    setSelectedNodes([]);
+                  }
+                }}
+              />
             </label>
-          </th> */}
-          <th>Name</th>
-          <th>Size</th>
+          </th>
+          <th>
+            <button type="button" className="btn btn-sm btn-ghost">
+              Name
+            </button>
+          </th>
+          <th>
+            <button type="button" className="btn btn-sm btn-ghost">
+              Size
+            </button>
+          </th>
           <th>Action</th>
         </tr>
       </thead>
@@ -189,11 +260,26 @@ function NodeTable({
 
           return (
             <tr key={node.id} className="group">
-              {/* <th>
+              <th>
                 <label>
-                  <input type="checkbox" className="checkbox" />
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={selectedNodes.includes(node.id)}
+                    onChange={() => {
+                      if (selectedNodes.includes(node.id)) {
+                        const filtered = selectedNodes.filter(
+                          (e) => e !== node.id,
+                        );
+                        setSelectedNodes(filtered);
+                      } else {
+                        const filtered = [...selectedNodes, node.id];
+                        setSelectedNodes(filtered);
+                      }
+                    }}
+                  />
                 </label>
-              </th> */}
+              </th>
               <td>
                 <div className="flex items-center gap-3 max-w-96 ">
                   <div className="h-12 w-12">
@@ -242,6 +328,22 @@ function NodeTable({
       </tbody>
       <tfoot>
         <tr>
+          <th>
+            <label>
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={selectedNodes.length === nodes.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedNodes(nodes.map((node) => node.id));
+                  } else {
+                    setSelectedNodes([]);
+                  }
+                }}
+              />
+            </label>
+          </th>
           <th>Name</th>
           <th>Size</th>
           <th>Action</th>

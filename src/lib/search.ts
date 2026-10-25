@@ -101,16 +101,24 @@ export async function updateSearchItem(
   });
 }
 
+export type SearchResult = {
+  content: string;
+  id: string;
+  metadata: NodeFileMeta;
+  mime_type: string;
+  type: string;
+};
+
 export async function searchFiles(
   db: Kysely<DB>,
   searchTerm: string,
   limit = 50,
-) {
+): Promise<SearchResult[]> {
   const sanitizedTerm = searchTerm.replace(/["*.+-:]/g, " ").trim();
-  return await db
+  return (await db
     .selectFrom("search_fts")
     .selectAll()
     .where("search_fts", "match", `${sanitizedTerm}*`)
     .limit(limit)
-    .execute();
+    .execute()) as SearchResult[];
 }

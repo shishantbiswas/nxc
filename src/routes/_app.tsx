@@ -4,8 +4,10 @@ import {
   Outlet,
   redirect,
   useLocation,
+  useRouteContext,
+  useRouter,
 } from "@tanstack/react-router";
-import { useLocalStorage } from "@uidotdev/usehooks";
+import { useDebounce, useLocalStorage } from "@uidotdev/usehooks";
 import {
   Folder,
   FolderPlus,
@@ -24,18 +26,25 @@ import {
   User,
   Users,
   Video,
+  X,
 } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
+import useSWR from "swr";
+import { useSnapshot } from "valtio/react";
 import { Drawer } from "vaul";
 import { z } from "zod";
+import type { Nodes } from "../../bknd-types";
 import { CreateModal } from "../components/create-modal";
 import { PreviewFile } from "../components/preview";
 import { Sidebar } from "../components/sidebar";
 import { useTheme } from "../components/theme-provider";
 import { UploadIndicator } from "../components/upload-progress-badge";
 import { api } from "../lib/bknd";
-import { modalStore } from "../store/modal";
+import { getFilePreviewByMimeType } from "../lib/get-file-preview-by-mime-type";
+import { type ModalType, modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
+import { truncateText } from "../utils/truncate-text";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -82,6 +91,32 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
+  // useEffect(() => {
+  //   let wakeLock: WakeLockSentinel | null = null;
+  //   const unsubscribe = subscribe(uploadStore, async () => {
+  //     const tasks = Object.values(uploadStore.tasks);
+  //     if (tasks.length === 0) return;
+  //     const completed = tasks.every((t) => t.status === "completed");
+  //     const isUploading = tasks.some((t) => t.status === "uploading");
+  //     if (isUploading && !wakeLock) {
+  //       try {
+  //         wakeLock = await navigator.wakeLock.request("screen");
+  //       } catch (err) {
+  //         console.error("Wake lock request denied or failed:", err);
+  //       }
+  //     } else if (completed && wakeLock) {
+  //       await wakeLock.release();
+  //       wakeLock = null;
+  //     }
+  //   });
+  //   return () => {
+  //     unsubscribe();
+  //     if (wakeLock) {
+  //       wakeLock.release().catch(() => {});
+  //     }
+  //   };
+  // }, []);
+
   const [sidebar] = useLocalStorage("sidebar", true);
   const { user } = Route.useRouteContext();
   return (
@@ -112,9 +147,228 @@ function AppLayout() {
       <MobileDock />
       <PreviewFile />
       <CreateModal />
+      <SearchModal />
+      <FileOpsModal />
     </div>
   );
 }
+
+function FileOpsModal() {
+  const { type } = useSnapshot(modalStore);
+  const router = useRouter();
+  const { data } = useSWR(type, async (type: ModalType) => {
+    if (type !== "FILE:MOVE") return;
+    const { data } = await api.data.readMany("nodes", {
+      select: ["name", "id"],
+      where: {
+        type: "FOLDER",
+      },
+    });
+    return data;
+  });
+
+  return (
+    <dialog
+      className={cn(
+        "modal",
+        ["FILE:MOVE"].includes(type ?? "") && "modal-open",
+      )}
+    >
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
+      <div
+        tabIndex={-1}
+        ref={(e) => e?.focus()}
+        className="modal-box p-0 focus:outline-none"
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            modalStore.setType(null);
+          }
+        }}
+      >
+        <div className="flex flex-col p-4">
+          <h1 className="text-2xl font-semibold">Confirm Action</h1>
+          <p className="text-sm opacity-70">
+            Are you sure ? This actions can not be undone
+          </p>
+          <div className="flex gap-2 justify-end mt-8">
+            {/* {type === "FILE:DELETE" && (
+              <button
+                type="button"
+                className="btn btn-error"
+                onClick={async () => {
+                  await api.data
+                    .updateMany(
+                      "nodes",
+                      {
+                        id: { $in: [...selectedNodes] },
+                      },
+                      { deleted_at: new Date() },
+                    )
+                    .then(() => {
+                      toast(`Trashed ${selectedNodes.length} Files/Folder`);
+                      modalStore.setSelectedNodes([]);
+                      modalStore.setType(null);
+                      router.invalidate();
+                    })
+                    .catch(() => {
+                      toast.error(
+                        `Error deleting ${selectedNodes.length} Files/Folder`,
+                      );
+                    });
+                }}
+              >
+                <Trash size={14} />
+                Delete ({selectedNodes.length})
+              </button>
+            )} */}
+            {type === "FILE:MOVE" && <></>}
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                modalStore.setType(null);
+              }}
+            >
+              <X size={14} />
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="modal-backdrop backdrop-blur-xs flex flex-col">
+        <div></div>
+        <button
+          type="button"
+          className="min-h-[calc(100%-3rem)]"
+          onClick={() => {
+            modalStore.setType(null);
+          }}
+        >
+          close
+        </button>
+      </div>
+    </dialog>
+  );
+}
+function SearchModal() {
+  const { type } = useSnapshot(modalStore);
+  const [q, setQ] = useState<null | string>(null);
+  const debouncedSearch = useDebounce<null | string>(q, 200);
+
+  const { data, isLoading, error, isValidating } = useSWR(
+    debouncedSearch,
+    (term) =>
+      fetch(`/api/search?q=${term}`).then(
+        (e) =>
+          e.json() as Promise<{
+            result: (Omit<Nodes, "id"> & { id: string })[];
+          }>,
+      ),
+  );
+
+  const isPending = isLoading && isValidating;
+  const { user } = useRouteContext({ from: "/_app" });
+  return (
+    <dialog className={cn("modal", type === "SEARCH" && "modal-open")}>
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
+      <div
+        tabIndex={-1}
+        ref={(e) => e?.focus()}
+        className="modal-box bg-base-200/80 p-0 focus:outline-none max-w-5xl max-h-[60vh] "
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            modalStore.setType(null);
+          }
+        }}
+      >
+        <div className="flex flex-col gap-4 p-6 @container">
+          <div className="flex justify-between">
+            <h1 className="text-3xl opacity-80 font-semibold">Search</h1>
+            <button
+              type="button"
+              className="btn btn-error btn-square"
+              onClick={() => modalStore.setType(null)}
+            >
+              <X />
+            </button>
+          </div>
+          <input
+            type="text"
+            className="input bg-neutral z-50 w-full sticky top-4"
+            placeholder="Start typing to see results"
+            onChange={(e) => {
+              if (e.target.value.trim().length === 0) {
+                setQ(null);
+              }
+              setQ(e.target.value);
+            }}
+          />
+          <ul className="grid @sm:grid-cols-2 @3xl:grid-cols-3">
+            {data?.result?.map((node) => {
+              const FilePreview = getFilePreviewByMimeType({
+                user,
+                node: node,
+                previewClassName: "h-32! w-full object-cover rounded",
+                iconClassName: "h-28! py-4 w-full object-cover rounded",
+              });
+              return (
+                <li
+                  key={node.id}
+                  className="hover:bg-neutral/20 rounded-lg w-full group p-3"
+                >
+                  <Link
+                    to="."
+                    {...(node.type === "FILE"
+                      ? {
+                          search: (pre) => ({
+                            ...pre,
+                            fileId: node.media_id,
+                          }),
+                        }
+                      : {
+                          search: (pre) => ({
+                            ...pre,
+                            folderId: node.id,
+                          }),
+                        })}
+                    onClick={() => {
+                      modalStore.setType(null);
+                    }}
+                  >
+                    {node.type === "FILE" ? (
+                      FilePreview
+                    ) : (
+                      <Folder className="h-22! my-7 w-full object-cover rounded" />
+                    )}
+                    <p className="truncate min-w-0 flex-1 mt-2 opacity-80 text-md">
+                      {truncateText(node.name, 24)}
+                    </p>
+                  </Link>
+                </li>
+              );
+            })}
+
+            {isPending && <div>Loading...</div>}
+            {error && <div>{error}</div>}
+          </ul>
+        </div>
+      </div>
+      <div className="modal-backdrop backdrop-blur-xs flex flex-col">
+        <div></div>
+        <button
+          type="button"
+          className="min-h-[calc(100%-3rem)]"
+          onClick={() => {
+            modalStore.setType(null);
+          }}
+        >
+          close
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
 function MobileDrawer({
   open,
   setOpen,
@@ -307,7 +561,7 @@ function Topbar() {
           className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
           data-tip={"New File"}
           onClick={() => {
-            modalStore.setType("FILE");
+            modalStore.setType("FILE:UPLOAD");
           }}
         >
           <Plus className="size-5 swap-off" />
@@ -319,7 +573,7 @@ function Topbar() {
           className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
           data-tip={"New Folder"}
           onClick={() => {
-            modalStore.setType("FOLDER");
+            modalStore.setType("FOLDER:UPLOAD");
           }}
         >
           <FolderPlus className="size-5 swap-off" />

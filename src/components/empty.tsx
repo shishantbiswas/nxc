@@ -24,7 +24,7 @@ export function Empty({
         {!hideAction && (
           <div className="card-actions">
             <button
-              onClick={() => modalStore.setType("FILE")}
+              onClick={() => modalStore.setType("FILE:UPLOAD")}
               type="button"
               className="btn btn-soft btn-sm"
             >
