@@ -66,7 +66,7 @@ const schema = em(
         preferences: json({
           default_value: {
             hideDotfiles: false,
-            wallpaper: "/wallpaper/1.jpg",
+            wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
             generateImagePreviews: false,
             generateVideoPreviews: false,
           } as UserPreferences,
@@ -108,6 +108,12 @@ export default {
         email: process.env.USER_EMAIL as string,
         password: process.env.USER_PASSWORD as string,
         role: "ADMIN",
+        preferences: {
+          hideDotfiles: false,
+          wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
+          generateImagePreviews: process.env.GENERATE_IMAGE_PREVIEWS ?? false,
+          generateVideoPreviews: process.env.GENERATE_VIDEO_PREVIEWS ?? false,
+        } as UserPreferences,
       });
     },
     plugins: [
@@ -121,6 +127,7 @@ export default {
   },
   onBuilt: async (app) => {
     const db = app.connection.kysely;
+   
 
     app.server.get("/api/data/breadcrumbs", async (c) => {
       const folderId = c.req.query("folderId");

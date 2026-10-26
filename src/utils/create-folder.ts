@@ -33,6 +33,7 @@ export async function createFolder({
     parent_id: folderId ?? undefined,
     name: folderName,
     type: "FOLDER",
+    created_at:new Date(),
     users_id: userId,
   });
   if (folderRes.status === 201) {

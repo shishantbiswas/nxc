@@ -10,6 +10,7 @@ import {
 import { useDebounce, useLocalStorage } from "@uidotdev/usehooks";
 import {
   Folder,
+  FolderInput,
   FolderPlus,
   House,
   Images,
@@ -154,7 +155,10 @@ function AppLayout() {
 }
 
 function FileOpsModal() {
-  const { type } = useSnapshot(modalStore);
+  const { type, selectedNodes } = useSnapshot(modalStore);
+  const [move, setMove] = useState<null | { id: string | null; name: string }>(
+    null,
+  );
   const router = useRouter();
   const { data } = useSWR(type, async (type: ModalType) => {
     if (type !== "FILE:MOVE") return;
@@ -190,7 +194,31 @@ function FileOpsModal() {
           <p className="text-sm opacity-70">
             Are you sure ? This actions can not be undone
           </p>
-          <div className="flex gap-2 justify-end mt-8">
+          {type === "FILE:MOVE" && (
+            <fieldset className="fieldset text-sm my-4">
+              <legend className="fieldset-legend">Folders</legend>
+              <select
+                defaultValue="Pick a Folder"
+                className="select w-full "
+                onChange={(e) => {
+                  if (e.target.value === "Home") {
+                    setMove({ id: null, name: "Home" });
+                  } else {
+                    setMove(
+                      data?.find((ext) => ext.name === e.target.value) || null,
+                    );
+                  }
+                }}
+              >
+                <option disabled={true}>Pick a Folder</option>
+                <option>Home</option>
+                {data?.map((it) => (
+                  <option key={it.id}>{it.name}</option>
+                ))}
+              </select>
+            </fieldset>
+          )}
+          <div className="flex gap-2 justify-end">
             {/* {type === "FILE:DELETE" && (
               <button
                 type="button"
@@ -221,7 +249,45 @@ function FileOpsModal() {
                 Delete ({selectedNodes.length})
               </button>
             )} */}
-            {type === "FILE:MOVE" && <></>}
+            {move && (
+              <button
+                type="button"
+                className="btn btn-info"
+                onClick={async () => {
+                  const selfInsert = selectedNodes.includes(move.id ?? "");
+                  if (selfInsert) {
+                    toast.error("Can't move folder in itself");
+                    return;
+                  }
+
+                  await api.data
+                    .updateMany(
+                      "nodes",
+                      {
+                        id: { $in: [...selectedNodes] },
+                      },
+                      // @ts-expect-error false positive
+                      { parent_id: move.id },
+                    )
+                    .then(() => {
+                      toast.success(
+                        `Moved ${selectedNodes.length} Files/Folder`,
+                      );
+                      modalStore.setSelectedNodes([]);
+                      modalStore.setType(null);
+                      router.invalidate();
+                    })
+                    .catch(() => {
+                      toast.error(
+                        `Error moving ${selectedNodes.length} Files/Folder`,
+                      );
+                    });
+                }}
+              >
+                <FolderInput size={14} />
+                Move
+              </button>
+            )}
             <button
               type="button"
               className="btn"

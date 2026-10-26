@@ -31,6 +31,9 @@ export function FolderTile({
     if (!id) {
       return;
     }
+
+    if (id === folder.id) return;
+
     await api.data.updateOne("nodes", id, {
       parent_id: folder.id,
     });

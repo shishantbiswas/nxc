@@ -47,7 +47,7 @@ export interface Nodes {
   id: Generated<string>;
   name: string;
   type: "FOLDER" | "FILE";
-  metadata: NodeFileMeta;
+  metadata?: NodeFileMeta;
   media_id?: string;
   mime_type?: string;
   parent_id?: string;

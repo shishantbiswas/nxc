@@ -6,7 +6,7 @@ import {
   useRouter,
   useSearch,
 } from "@tanstack/react-router";
-import { Check, CloudUpload, InfoIcon, X } from "lucide-react";
+import { Check, CloudUpload, File, Folder, InfoIcon, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -19,6 +19,7 @@ import { cn } from "../utils/cn";
 import { createFolder } from "../utils/create-folder";
 import { buildFolderTree, createDirectories } from "../utils/directory";
 import bytesToSize from "../utils/format-bytes";
+import { truncateText } from "../utils/truncate-text";
 import { useToast } from "./toast-provider";
 
 export function CreateModal() {
@@ -76,6 +77,10 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
   }, [type, form]);
 
   const onSubmit = async (form: UploadSchema) => {
+    const wakeLock = await navigator.wakeLock
+      .request("screen")
+      .catch(console.error);
+      
     if (!user) {
       toast.error("User is required");
       return;
@@ -99,6 +104,12 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
             uploadStore.startUpload({
               files,
               folderId: createdFolder.folderId,
+              onFinish: async () => {
+                if (wakeLock) {
+                  console.log("freeing wakeLock");
+                  await wakeLock.release();
+                }
+              },
             });
             return createdFolder;
           },
@@ -157,15 +168,18 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
           router.invalidate();
         },
         onError: (error) => {
-          toast.error(`${error} finished uploading`);
+          toast.error(`${error} error uploading`);
           router.invalidate();
         },
-        onFinish: ({
+        onFinish: async ({
           completedSuccessfully,
           errorCount,
           hasError,
           sucessCount,
         }) => {
+          if (wakeLock) {
+            await wakeLock.release();
+          }
           if (hasError) {
             toast.error(`${errorCount} files failed`);
           }
@@ -190,12 +204,15 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
           toast.error(`${error} finished uploading`);
           router.invalidate();
         },
-        onFinish: ({
+        onFinish: async ({
           completedSuccessfully,
           errorCount,
           hasError,
           sucessCount,
         }) => {
+          if (wakeLock) {
+            await wakeLock.release();
+          }
           if (hasError) {
             toast.error(`${errorCount} files failed`);
           }
@@ -211,6 +228,7 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
   };
 
   if (!type) return null;
+  const createType = type.split(":")[0] as "FILE" | "FOLDER";
 
   return (
     <FormProvider {...form}>
@@ -224,10 +242,14 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
 
         <button
           type="submit"
-          className="btn btn-primary capitalize w-full"
+          className={cn(
+            "btn  gap-2  w-full",
+            createType === "FILE" ? "btn-primary" : "btn-accent",
+          )}
           disabled={form.formState.isSubmitting}
         >
-          Create {type.toLocaleLowerCase()}
+          {createType === "FILE" ? <File size={16} /> : <Folder size={16} />}
+          <p className="capitalize">Create {createType.toLocaleLowerCase()}</p>
         </button>
       </form>
     </FormProvider>
@@ -490,8 +512,9 @@ function FileRow({
             className="w-10 h-10 object-cover rounded-lg"
           />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-base-300 flex items-center justify-center text-xs font-bold uppercase">
-            {file.fileData.name.split(".").pop() || "file"}
+          <div className="w-10 h-10 rounded-lg bg-base-300 flex items-center justify-center text-xs font-bold uppercase text-nowrap">
+            {truncateText(file.fileData.name.split(".").pop() ?? "", 8) ||
+              "file"}
           </div>
         )}
         <div className="min-w-0">
