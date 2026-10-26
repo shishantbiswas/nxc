@@ -1,9 +1,10 @@
 import { nanoid } from "nanoid";
 import { toast } from "react-hot-toast";
-import { proxy, subscribe } from "valtio";
+import { proxy } from "valtio";
 import type { Nodes } from "../../bknd-types";
 import { IMAGE_PREVIEW_SIZE } from "../constants";
 import { api } from "../lib/bknd";
+import { fileExistsByName } from "../utils/file";
 import { getImageThumbnail } from "../utils/get-image-thumbnail";
 import { captureFrameFromTimestamp } from "../utils/get-video-frame";
 import { getImageDimensions, getVideoDimensions } from "../utils/metadata";
@@ -141,6 +142,12 @@ export const uploadStore = proxy<{
     for (let i = 0; i < files.length; i++) {
       const id = taskIds[i];
       const file = files[i].fileData;
+      const fileExists = await fileExistsByName(file.name, folderId);
+      if(fileExists){
+          uploadStore.tasks[id].status = "error";
+          uploadStore.tasks[id].error = "File already exists in that folder";
+        return
+      }
       const ext =
         file.name.lastIndexOf(".") !== -1
           ? file.name.slice(file.name.lastIndexOf("."))
@@ -348,4 +355,3 @@ export const uploadStore = proxy<{
     });
   },
 });
-

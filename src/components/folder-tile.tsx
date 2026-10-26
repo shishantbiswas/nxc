@@ -2,6 +2,7 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { Folder } from "lucide-react";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../bknd-types";
 import { api } from "../lib/bknd";
@@ -33,11 +34,24 @@ export function FolderTile({
     }
 
     if (id === folder.id) return;
-
-    await api.data.updateOne("nodes", id, {
-      parent_id: folder.id,
+    const currentFolderItems = await api.data.readMany("nodes", {
+      where: {
+        parent_id: folder.id,
+      },
+      limit: 1024,
     });
-    router.invalidate();
+
+    const itemToMoveIn = await api.data.readOne("nodes", id);
+    // console.log({ currentFolderItems, itemToMoveIn });
+
+    if (currentFolderItems.data.some((e) => e.name === itemToMoveIn.name)) {
+      toast.error("A file with the same name exists in that folder");
+    } else {
+      await api.data.updateOne("nodes", id, {
+        parent_id: folder.id,
+      });
+      router.invalidate();
+    }
   };
 
   const [isDragOver, setIsDragOver] = useState(false);

@@ -16,8 +16,8 @@ import { type UploadSchema, uploadSchema } from "../schema/upload-schema";
 import { modalStore } from "../store/modal";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
-import { createFolder } from "../utils/create-folder";
 import { buildFolderTree, createDirectories } from "../utils/directory";
+import { createFolder } from "../utils/folder";
 import bytesToSize from "../utils/format-bytes";
 import { truncateText } from "../utils/truncate-text";
 import { useToast } from "./toast-provider";
@@ -80,7 +80,7 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
     const wakeLock = await navigator.wakeLock
       .request("screen")
       .catch(console.error);
-      
+
     if (!user) {
       toast.error("User is required");
       return;
@@ -95,7 +95,6 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
           root: dirs,
           folderId,
           createFn: async (name, files, folderId) => {
-            // console.log({ name, files, folderId});
             const createdFolder = await createFolder({
               userId: user.id as string,
               folderId,
@@ -106,7 +105,6 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
               folderId: createdFolder.folderId,
               onFinish: async () => {
                 if (wakeLock) {
-                  console.log("freeing wakeLock");
                   await wakeLock.release();
                 }
               },

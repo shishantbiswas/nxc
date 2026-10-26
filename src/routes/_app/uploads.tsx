@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CircleCheck } from "lucide-react";
+import { CircleCheck, Info } from "lucide-react";
 import { useSnapshot } from "valtio/react";
 import { uploadStore } from "../../store/upload";
 import bytesToSize from "../../utils/format-bytes";
@@ -165,9 +165,10 @@ function RouteComponent() {
                     )}
                     {task.status === "error" && (
                       <span
-                        className="badge badge-error badge-sm"
-                        title={task.error}
+                        className="badge badge-error badge-sm tooltip hover:tooltip-open tooltip-error"
+                        data-tip={task.error}
                       >
+                        <Info size={10}/>
                         Failed
                       </span>
                     )}
