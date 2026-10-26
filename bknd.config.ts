@@ -65,7 +65,7 @@ const schema = em(
         quota: number(),
         preferences: json({
           default_value: {
-            hideDotfiles: false,
+            hideDotfiles: true,
             wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
             generateImagePreviews: false,
             generateVideoPreviews: false,
@@ -80,6 +80,9 @@ const schema = em(
     index(nodes).on(["type"]);
     index(nodes).on(["deleted_at"]);
     index(nodes).on(["mime_type"]);
+
+    // USER RELATIONS
+    relation(users).manyToOne(users, { mappedBy: "manager" });
 
     // NODE RELATIONS
     relation(nodes).manyToOne(nodes, { mappedBy: "parent" });
@@ -109,7 +112,7 @@ export default {
         password: process.env.USER_PASSWORD as string,
         role: "ADMIN",
         preferences: {
-          hideDotfiles: false,
+          hideDotfiles: true,
           wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
           generateImagePreviews: process.env.GENERATE_IMAGE_PREVIEWS ?? false,
           generateVideoPreviews: process.env.GENERATE_VIDEO_PREVIEWS ?? false,
@@ -127,7 +130,6 @@ export default {
   },
   onBuilt: async (app) => {
     const db = app.connection.kysely;
-   
 
     app.server.get("/api/data/breadcrumbs", async (c) => {
       const folderId = c.req.query("folderId");
@@ -202,6 +204,42 @@ export default {
         ANONYMOUS: {
           is_default: true,
           implicit_allow: false,
+        },
+        MEMBER: {
+          permissions: [
+            {
+              permission: "system.access.api",
+              effect: "allow",
+            },
+            {
+              permission: "data.entity.create",
+              effect: "allow",
+            },
+            {
+              permission: "data.entity.delete",
+              effect: "allow",
+            },
+            {
+              permission: "data.entity.read",
+              effect: "allow",
+            },
+            {
+              permission: "data.entity.update",
+              effect: "allow",
+            },
+            {
+              permission: "media.file.read",
+              effect: "allow",
+            },
+            {
+              permission: "media.file.upload",
+              effect: "allow",
+            },
+            {
+              permission: "media.file.delete",
+              effect: "allow",
+            },
+          ],
         },
       },
       allow_register: false,

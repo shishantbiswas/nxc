@@ -8,7 +8,7 @@ export const Route = createFileRoute("/_app/shared")({
   loader: async ({ context }) => {
     const user = context.user;
 
-    const entries = await api.data.readMany("shared", {
+    const sharedToOther = await api.data.readMany("shared", {
       with: ["owner", "nodes"],
       where: {
         owner_id: { $eq: user.id },
@@ -16,9 +16,17 @@ export const Route = createFileRoute("/_app/shared")({
       limit: 1024,
     });
 
+    const sharedByOther = await api.data.readMany("shared", {
+      with: ["owner", "nodes"],
+      where: {
+        receiver_id: { $eq: user.id },
+      },
+      limit: 1024,
+    });
+
     return {
-      entries: entries.data,
-      isEmpty: entries.length > 0,
+      sharedToOther: sharedToOther.data,
+      sharedByOther: sharedByOther.data,
     };
   },
   head: () => ({
@@ -31,18 +39,61 @@ export const Route = createFileRoute("/_app/shared")({
 });
 
 function RouteComponent() {
-  const { entries } = Route.useLoaderData();
+  const { sharedByOther, sharedToOther } = Route.useLoaderData();
 
-  if (!Array.isArray(entries) || "error" in entries) {
-    throw new Error(
-      `Fatal Error Occoured ${entries.error ?? "entries is not a array"}`,
-    );
+  if (
+    !Array.isArray(sharedToOther) ||
+    !Array.isArray(sharedByOther) ||
+    "error" in sharedToOther ||
+    "error" in sharedByOther
+  ) {
+    throw new Error(`Fatal Error Occoured data is not a array`);
   }
+
   return (
-    <div>
-      <h2 className="p-4 text-2xl font-semibold">Shared files and folders</h2>
+    <div className="p-4 ">
+      <h2 className="text-2xl font-semibold">File/Folder you shared</h2>
+      <ul className="list mt-4">
+        {sharedToOther.map((share) => {
+          const FileIcon = getFileIconByMimeType(share.nodes?.mime_type);
+
+          return (
+            <li key={share.id}>
+              <Link
+                to="."
+                search={(pre) => ({
+                  ...pre,
+                  fileId: share.nodes?.media_id as string,
+                })}
+                className="list-row hover:bg-base-100/30 p-2"
+              >
+                <div>
+                  <FileIcon className="shrink-0 size-10" />
+                </div>
+                <div>
+                  <h3>{share.nodes?.name}</h3>
+                  <div className="text-xs capitalize font-semibold opacity-60">
+                    Shared since{" "}
+                    {new Date(share.nodes?.created_at as string).toLocaleString(
+                      "en",
+                    )}
+                    - till{" "}
+                    {share.valid_till
+                      ? new Date(share.valid_till as string).toLocaleString(
+                          "en",
+                        )
+                      : "forever"}
+                  </div>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      <h2 className="text-2xl font-semibold mt-12">File/Folder shared by other to you</h2>
       <ul className="list">
-        {entries.map((share) => {
+        {sharedByOther.map((share) => {
           const FileIcon = getFileIconByMimeType(share.nodes?.mime_type);
 
           return (

@@ -45,7 +45,7 @@ export const convertVideoPlugin: AppPlugin = (app) => ({
       if (
         node.type !== "FILE" ||
         !node.media_id ||
-        node.metadata.fileType !== "video"
+        node.metadata?.fileType !== "video"
       ) {
         console.log({ node, id: body.id });
         return c.json(

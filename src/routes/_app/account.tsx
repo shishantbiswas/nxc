@@ -5,6 +5,8 @@ import {
 } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import type { SafeUser } from "bknd";
+// import { hash } from "bknd/utils";
+// import { toast } from "react-hot-toast";
 import { api } from "../../lib/bknd";
 
 export const Route = createFileRoute("/_app/account")({
@@ -60,6 +62,17 @@ function RouteComponent() {
           aria-label="Preferences"
         />
         <Preferences user={user} />
+        {/* <input
+          type="radio"
+          name="user"
+          defaultChecked={hashWithoutSymbol === "members"}
+          onClick={() => {
+            window.location.hash = "members";
+          }}
+          className="tab"
+          aria-label="Members"
+        />
+        <Members user={user} /> */}
       </div>
     </div>
   );
@@ -118,7 +131,7 @@ function Appearance({ user }: { user: SafeUser }) {
           <option>Portrait</option>
           <option>Landscape</option>
           <option>Text Bottom</option>
-          <option>Text Top</option>
+          {/* <option>Text Top</option> */}
         </select>
       </div>
     </div>
@@ -134,12 +147,38 @@ function Security({ user }: { user: SafeUser }) {
           <h4 className="text-lg font-semibold">Change password</h4>
           <p className="opacity-70 text-sm">Update password</p>
         </div>
-        <div className="join">
-          <input disabled className="input join-item" placeholder="Email" />
-          <button disabled type="button" className="btn join-item">
+        <form
+          className="join"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const form = new FormData(e.currentTarget);
+            // await api.data
+            //   .updateOne("users", user.id, {
+            //     strategy_value: await hash.sha256(
+            //       form.get("password") as string,
+            //     ),
+            //   })
+            //   .then(async (e) => {
+            //     console.log(e)
+            //     toast.success("password updated");
+            //     await api.auth.logout();
+            //     router.invalidate();
+            //   })
+            //   .catch(() => {
+            //     toast.error("password failedupdated");
+            //   });
+          }}
+        >
+          <input
+            disabled
+            name="password"
+            className="input join-item"
+            placeholder="New Password"
+          />
+          <button disabled type="submit" className="btn join-item">
             Update
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -222,6 +261,52 @@ function Preferences({ user }: { user: SafeUser }) {
           }}
           defaultChecked={user.preferences?.generateVideoPreviews}
         />
+      </div>
+    </div>
+  );
+}
+
+function Members({ user }: { user: SafeUser }) {
+  const router = useRouter();
+  return (
+    <div className="tab-content p-2">
+      <div className="flex justify-between">
+        <div>
+          <h4 className="text-lg font-semibold">Add Member</h4>
+          {/* <p className="opacity-70 text-sm">Update password</p> */}
+        </div>
+        <form
+          className="join"
+          // onSubmit={async (e) => {
+          //   e.preventDefault();
+          //   const form = new FormData(e.currentTarget);
+
+          //   const { data } = await api.data.createOne("users", {
+          //     email: form.get("email") as string,
+          //     strategy: "password",
+          //     role: "MEMBER",
+          //     strategy_value: await hash.sha256(form.get("password") as string),
+          //   });
+
+          //   console.log(data);
+          // }}
+        >
+          <input
+            disabled
+            name="email"
+            className="input join-item"
+            placeholder="Email"
+          />
+          <input
+            disabled
+            name="password"
+            className="input join-item"
+            placeholder="Password"
+          />
+          <button disabled type="submit" className="btn join-item">
+            Add
+          </button>
+        </form>
       </div>
     </div>
   );

@@ -63,9 +63,11 @@ export interface Shared {
   id: Generated<string>;
   valid_till?: Date | string;
   token?: string;
-  users_id: string;
+  owner?: DB["users"];
+  owner_id: string;
+  receiver?: DB["users"];
+  receiver_id: string;
   nodes_id: string;
-  users?: DB["users"];
   nodes?: DB["nodes"];
 }
 

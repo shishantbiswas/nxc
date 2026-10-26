@@ -113,22 +113,16 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
           },
         });
         if (error > 0) {
-          toast.error("Error creating folders", {
-            duration: 3500,
-          });
+          toast.error("Error creating folders");
           return;
         }
         if (exists > 0) {
-          toast.warning("Folder already exists", {
-            duration: 3500,
-          });
+          toast.warning("Folder already exists");
           return;
         }
-        toast.success("Created folders", {
-          duration: 3500,
-        });
+        toast.success("Created folders");
 
-        toast.info("Added files to upload queue", { duration: 3500 });
+        toast.info("Added files to upload queue");
         modalStore.setType(null);
       } else {
         const folderName = form.data.folderName;
@@ -195,11 +189,11 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
         files,
         folderId,
         onSucess: (node) => {
-          toast.success(`${node.name} finished uploading`);
+          toast.success(`${truncateText(node.name, 24)} Uploaded sucessfully`);
           router.invalidate();
         },
         onError: (error) => {
-          toast.error(`${error} finished uploading`);
+          toast.error(`Error uploading: ${error}`);
           router.invalidate();
         },
         onFinish: async ({
