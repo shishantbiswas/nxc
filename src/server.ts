@@ -14,15 +14,19 @@ const app = new Hono();
 // app.use(logger(customLogger));
 
 if (import.meta.env.PROD) {
-  app.use(serveStatic({ root: "./client" }));
+  app.use(
+    serveStatic({
+      root: "./client",
+      precompressed: true,
+      onFound: (_path, c) => {
+        c.header("Cache-Control", "public, max-age=31536000, immutable");
+      },
+    }),
+  );
 }
 
 const handler = await createFrameworkApp(config);
 app.all("/api/*", async (c) => await handler.server.fetch(c.req.raw));
-
-// if (process.env.NODE_ENV === "production") {
-//   app.use("/*", serveStatic({ root: "./dist/client", precompressed: true }));
-// }
 
 const isProd = import.meta.env.PROD;
 
@@ -50,9 +54,8 @@ app.get("*", (c) => {
     <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Home</title>
     <link rel="stylesheet" href=${cssPath} />
-    <link rel="shortcut icon" href="/favicon.svg" type="image/x-icon">
+
     <script>
       (function () {
         const savedTheme = localStorage.getItem('theme') || 'system';
@@ -86,6 +89,7 @@ app.get("*", (c) => {
     </html>
   `);
 });
+
 
 export default isProd
   ? Bun.serve({

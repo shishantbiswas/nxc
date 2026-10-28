@@ -8,6 +8,7 @@ declare global {
 }
 
 export type UserPreferences = {
+  favicon?: string;
   wallpaper?: string;
   hideDotfiles?: boolean;
   generateImagePreviews?: boolean;
@@ -46,7 +47,7 @@ export interface Nodes {
   id: Generated<string>;
   name: string;
   type: "FOLDER" | "FILE";
-  metadata: NodeFileMeta;
+  metadata?: NodeFileMeta;
   media_id?: string;
   mime_type?: string;
   parent_id?: string;
@@ -62,9 +63,11 @@ export interface Shared {
   id: Generated<string>;
   valid_till?: Date | string;
   token?: string;
-  users_id: string;
+  owner?: DB["users"];
+  owner_id: string;
+  receiver?: DB["users"];
+  receiver_id: string;
   nodes_id: string;
-  users?: DB["users"];
   nodes?: DB["nodes"];
 }
 

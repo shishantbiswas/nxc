@@ -1,8 +1,10 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouteContext } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
+import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../bknd-types";
 import { getFileIconByMimeType } from "../lib/get-file-icon-by-mime-type";
 import { getFilePreviewByMimeType } from "../lib/get-file-preview-by-mime-type";
+import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import { NodeDropdown } from "./node-dropdown";
 
@@ -19,8 +21,11 @@ export function FileTile({
   const [tileStyle] = useLocalStorage<
     "portrait" | "landscape" | "text bottom" | "text top"
   >("tile-style", "portrait");
+  const { selectedNodes, setSelectedNodes } = useSnapshot(modalStore);
 
+  const { user } = useRouteContext({ strict: false });
   const FilePreview = getFilePreviewByMimeType({
+    user,
     node: file,
     previewClassName: NON_LANDSCAPE.includes(tileStyle)
       ? "size-none h-32! w-full object-cover rounded"
@@ -53,6 +58,21 @@ export function FileTile({
             tileStyle === "text bottom" ? "mt-2" : "mb-2",
           )}
         >
+          <input
+            type="checkbox"
+            className={cn("checkbox checkbox-sm  group-hover:block", selectedNodes.length === 0 && "hidden")}
+            checked={selectedNodes.includes(file.id)}
+            onChange={() => {
+              if (selectedNodes.includes(file.id)) {
+                const filtered = selectedNodes.filter((e) => e !== file.id);
+                setSelectedNodes(filtered);
+              } else {
+                const filtered = [...selectedNodes, file.id];
+                setSelectedNodes(filtered);
+              }
+            }}
+          />
+
           <FileIcon className="size-4" />
           <p className="truncate min-w-0 flex-1 pr-8 opacity-70 group-hover:opacity-100 ">
             {file.name}

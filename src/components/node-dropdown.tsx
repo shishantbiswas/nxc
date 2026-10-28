@@ -1,5 +1,15 @@
 import { Link, useRouteContext, useRouter } from "@tanstack/react-router";
-import { DoorOpen, Ellipsis, PencilLine, Share, Trash } from "lucide-react";
+import {
+  Badge,
+  DoorOpen,
+  Download,
+  Ellipsis,
+  ImagePlus,
+  PencilLine,
+  Share,
+  Trash,
+  Wallpaper,
+} from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import { nanoid } from "nanoid";
 import { useState } from "react";
@@ -8,6 +18,7 @@ import { toast } from "react-hot-toast";
 import type { Nodes } from "../../bknd-types";
 import { api } from "../lib/bknd";
 import { cn } from "../utils/cn";
+
 export function NodeDropdown({
   node,
 }: {
@@ -16,6 +27,7 @@ export function NodeDropdown({
   };
 }) {
   const router = useRouter();
+  const { user } = useRouteContext({ strict: false });
   const [modal, setModal] = useState<"rename" | "share" | null>();
 
   return (
@@ -56,6 +68,92 @@ export function NodeDropdown({
               <DoorOpen size={14} /> Open
             </button>
           </Link>
+
+          {node.type === "FILE" && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost justify-start gap-4"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/media/file/${node.media?.path}`;
+                link.download = node.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+            >
+              <Download size={14} />
+              Download
+            </button>
+          )}
+
+          {[
+            "image/webp",
+            "image/jpg",
+            "image/jpeg",
+            "image/svg+xml",
+            "image/gif",
+            "image/avif",
+            "image/png",
+          ].includes(node.mime_type ?? "") && (
+            <div className="dropdown w-full dropdown-left dropdown-hover dropdown-center">
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost justify-start gap-4 w-full"
+              >
+                <ImagePlus size={14} />
+                Set as
+              </button>
+              <ul
+                tabIndex={-1}
+                className="dropdown-content menu bg-base-100 rounded-box z-1 w-52 p-2 shadow-sm"
+              >
+                <li>
+                  <button
+                    type="button"
+                    className="gap-4"
+                    onClick={async () => {
+                      if (node.type !== "FILE" || !user?.id) {
+                        return;
+                      }
+                      await api.data.updateOne("users", user?.id as string, {
+                        preferences: {
+                          ...user?.preferences,
+                          favicon: `/api/media/file/${node.media?.path}`,
+                        },
+                      });
+                      toast.success("Updated favicon");
+                      router.invalidate();
+                    }}
+                  >
+                    <Badge size={14} />
+                    Favicon
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="gap-4"
+                    onClick={async () => {
+                      if (node.type !== "FILE" || !user?.id) {
+                        return;
+                      }
+                      await api.data.updateOne("users", user?.id as string, {
+                        preferences: {
+                          ...user?.preferences,
+                          wallpaper: `/api/media/file/${node.media?.path}`,
+                        },
+                      });
+                      toast.success("Updated wallpaper");
+                      router.invalidate();
+                    }}
+                  >
+                    <Wallpaper size={14} /> Wallpaper
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
           <button
             type="button"
             className="btn btn-sm btn-ghost justify-start gap-4"
@@ -200,12 +298,12 @@ function ShareModal({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            
+
             await api.data.createOne("shared", {
               nodes_id: node.id,
               users_id: user.id as string,
               token: nanoid(),
-              valid_till: startDate ?? undefined
+              valid_till: startDate ?? undefined,
             });
             toast.success(`${node.name} is now shared`);
             router.invalidate();

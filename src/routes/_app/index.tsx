@@ -1,4 +1,9 @@
-import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  useRouteContext,
+  useRouter,
+} from "@tanstack/react-router";
 import type { RepoQueryIn } from "bknd";
 import { Empty } from "../../components/empty";
 import { FileTile } from "../../components/file-entry";
@@ -7,14 +12,23 @@ import { api } from "../../lib/bknd";
 import "github-markdown-css/github-markdown.css";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { Folder, Grid3X3, TableProperties } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../../bknd-types";
 import { NodeDropdown } from "../../components/node-dropdown";
+import formatDateOrTime from "../../lib/format-date-time";
 import { getFilePreviewByMimeType } from "../../lib/get-file-preview-by-mime-type";
+import { modalStore } from "../../store/modal";
+import { sortStore } from "../../store/sort";
 import bytesToSize from "../../utils/format-bytes";
 import { getTimeBasedGreeting } from "../../utils/time-based-greeting";
 
 export const Route = createFileRoute("/_app/")({
   component: Index,
+  // validateSearch: z.object({
+  //   sort: z.string().optional(),
+  //   dir: z.enum(["asc", "desc"]).optional(),
+  // }),
   beforeLoad: ({ search }) => search,
   loaderDeps: ({ search }) => search,
   loader: async ({ context }) => {
@@ -55,12 +69,21 @@ export const Route = createFileRoute("/_app/")({
         },
         ...opts,
       },
-      sort: {
-        by: "type",
-        dir: "desc",
-      },
+      sort:
+        // sorting doesn't work for nested json will wait till bknd adds it
+        // context.sort
+        //   ? {
+        //       by: context.sort,
+        //       dir: context.dir ?? "desc",
+        //     }
+        //   :
+        {
+          by: "type",
+          dir: "desc",
+        },
       limit: 1024,
     });
+    sortStore.setNodes(entries, "metadata.size", "desc");
 
     return {
       entries: entries.data,
@@ -69,6 +92,13 @@ export const Route = createFileRoute("/_app/")({
       isEmpty: entries.length === 0,
     };
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Home",
+      },
+    ],
+  }),
 });
 
 function Index() {
@@ -76,17 +106,60 @@ function Index() {
   const { folderId } = Route.useSearch();
   const { user, breadcrumbs } = useRouteContext({ from: "/_app" });
   const [grid, setGrid] = useLocalStorage("layout", true);
+  const { selectedNodes } = useSnapshot(modalStore);
+  const { nodes } = useSnapshot(sortStore);
+
   if (!Array.isArray(entries) || "error" in entries) {
     throw new Error(
       `Fatal Error Occoured ${entries.error ?? "entries is not a array"}`,
     );
   }
+  const router = useRouter();
+
   return (
     <>
-      <title>Home</title>
       <div className="flex items-center justify-between">
         <div></div>
-        <div>
+        <div className="flex items-center gap-2">
+          {selectedNodes.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="btn btn-sm text-sm!"
+                onClick={() => modalStore.setType("FILE:MOVE")}
+              >
+                Move To ({selectedNodes.length})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm text-sm! btn-error"
+                // onClick={() => modalStore.setType("FILE:DELETE")}
+                onClick={async () => {
+                  await api.data
+                    .updateMany(
+                      "nodes",
+                      {
+                        id: { $in: [...selectedNodes] },
+                      },
+                      { deleted_at: new Date() },
+                    )
+                    .then(() => {
+                      toast(`Trashed ${selectedNodes.length} Files/Folder`);
+                      modalStore.setSelectedNodes([]);
+                      modalStore.setType(null);
+                      router.invalidate();
+                    })
+                    .catch(() => {
+                      toast.error(
+                        `Error deleting ${selectedNodes.length} Files/Folder`,
+                      );
+                    });
+                }}
+              >
+                Delete ({selectedNodes.length})
+              </button>
+            </>
+          )}
           <label
             className="btn btn-square swap swap-rotate tooltip hover:tooltip-open tooltip-left"
             data-tip={`Swap to ${grid ? "Table" : "Grid"} View`}
@@ -121,9 +194,9 @@ function Index() {
           <Empty />
         </div>
       ) : grid ? (
-        <NodeGrid nodes={entries} />
+        <NodeGrid nodes={nodes as typeof sortStore.nodes} />
       ) : (
-        <NodeTable nodes={entries} />
+        <NodeTable nodes={nodes as typeof sortStore.nodes} />
       )}
     </>
   );
@@ -134,23 +207,37 @@ function NodeGrid({
 }: {
   nodes: (Omit<Nodes, "id"> & { id: string })[];
 }) {
+  const { user } = useRouteContext({ strict: false });
+
   return (
-    <main className="@container mt-4">
+    <main className="@container mt-4  pb-18">
       <ul className="grid @sm:grid-cols-2 @lg:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5 @7xl:grid-cols-6 gap-4 pb-12 md:p-0">
-        {nodes?.map((node) => (
-          <li
-            key={node.id}
-            className="flex items-center pl-0 text-nowrap min-w-0"
-          >
-            <div className="flex items-center gap-4 min-w-0 w-full ">
-              {node.type === "FOLDER" ? (
-                <FolderTile folder={node} />
-              ) : (
-                <FileTile file={node} />
-              )}
-            </div>
-          </li>
-        ))}
+        {nodes
+          ?.filter((node) => {
+            if (
+              user?.preferences?.hideDotfiles &&
+              node.name.charAt(0) === "."
+            ) {
+              return false;
+            }
+            return true;
+          })
+          ?.map((node) => {
+            return (
+              <li
+                key={node.id}
+                className="flex items-center pl-0 text-nowrap min-w-0 relative"
+              >
+                <div className="flex items-center gap-4 min-w-0 w-full ">
+                  {node.type === "FOLDER" ? (
+                    <FolderTile folder={node} />
+                  ) : (
+                    <FileTile file={node} />
+                  )}
+                </div>
+              </li>
+            );
+          })}
       </ul>
     </main>
   );
@@ -161,31 +248,124 @@ function NodeTable({
 }: {
   nodes: (Omit<Nodes, "id"> & { id: string })[];
 }) {
+  const { user } = useRouteContext({ from: "/_app" });
+  // const { dir } = Route.useSearch();
+  const { selectedNodes, setSelectedNodes } = useSnapshot(modalStore);
+
   return (
-    <table className="table ">
+    <table className="table pb-12">
       <thead>
         <tr>
-          {/* <th>
+          <th>
             <label>
-              <input type="checkbox" className="checkbox" />
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={selectedNodes.length === nodes.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedNodes(nodes.map((node) => node.id));
+                  } else {
+                    setSelectedNodes([]);
+                  }
+                }}
+              />
             </label>
-          </th> */}
-          <th>Name</th>
-          <th>Size</th>
+          </th>
+          <th>
+            {/* <Link
+              to="."
+              search={(pre) => ({
+                ...pre,
+                sort: "name",
+                dir: dir === "asc" ? "desc" : "asc",
+              })}
+              className="btn btn-sm btn-ghost"
+            > */}
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() =>
+                sortStore.setNodes(
+                  sortStore.nodes,
+                  "name",
+                  sortStore.dir === "asc" ? "desc" : "asc",
+                )
+              }
+            >
+              Name
+            </button>
+            {/* </Link> */}
+          </th>
+          <th>
+            {/* <Link
+              to="."
+              search={(pre) => ({
+                ...pre,
+                sort: "metadata.size",
+                dir: dir === "asc" ? "desc" : "asc",
+              })}
+              className="btn btn-sm btn-ghost"
+            > */}
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() =>
+                sortStore.setNodes(
+                  sortStore.nodes,
+                  "metadata.size",
+                  sortStore.dir === "asc" ? "desc" : "asc",
+                )
+              }
+            >
+              Size
+            </button>
+            {/* </Link> */}
+          </th>
+          <th>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() =>
+                sortStore.setNodes(
+                  sortStore.nodes,
+                  "created_at",
+                  sortStore.dir === "asc" ? "desc" : "asc",
+                )
+              }
+            >
+              Created At
+            </button>
+          </th>
           <th>Action</th>
         </tr>
       </thead>
       <tbody>
         {nodes.map((node) => {
-          const FilePreview = getFilePreviewByMimeType({ node });
+          const FilePreview = getFilePreviewByMimeType({ node, user });
 
           return (
             <tr key={node.id} className="group">
-              {/* <th>
+              <th>
                 <label>
-                  <input type="checkbox" className="checkbox" />
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={selectedNodes.includes(node.id)}
+                    onChange={() => {
+                      if (selectedNodes.includes(node.id)) {
+                        const filtered = selectedNodes.filter(
+                          (e) => e !== node.id,
+                        );
+                        setSelectedNodes(filtered);
+                      } else {
+                        const filtered = [...selectedNodes, node.id];
+                        setSelectedNodes(filtered);
+                      }
+                    }}
+                  />
                 </label>
-              </th> */}
+              </th>
               <td>
                 <div className="flex items-center gap-3 max-w-96 ">
                   <div className="h-12 w-12">
@@ -221,10 +401,11 @@ function NodeTable({
                 </div>
               </td>
               {node.type === "FILE" ? (
-                <td>{bytesToSize(node.metadata.size)}</td>
+                <td className="text-nowrap">{bytesToSize(node?.metadata?.size)}</td>
               ) : (
-                <td></td>
+                <td className="text-nowrap">4 KB</td>
               )}
+              <td>{formatDateOrTime(node.created_at!)}</td>
               <td className="min-w-16">
                 <NodeDropdown node={node} />
               </td>
@@ -234,8 +415,39 @@ function NodeTable({
       </tbody>
       <tfoot>
         <tr>
+          <th>
+            <label>
+              <input
+                type="checkbox"
+                className="checkbox checkbox-sm"
+                checked={selectedNodes.length === nodes.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedNodes(nodes.map((node) => node.id));
+                  } else {
+                    setSelectedNodes([]);
+                  }
+                }}
+              />
+            </label>
+          </th>
           <th>Name</th>
           <th>Size</th>
+          <th>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() =>
+                sortStore.setNodes(
+                  sortStore.nodes,
+                  "created_at",
+                  sortStore.dir === "asc" ? "desc" : "asc",
+                )
+              }
+            >
+              Created At
+            </button>
+          </th>
           <th>Action</th>
         </tr>
       </tfoot>

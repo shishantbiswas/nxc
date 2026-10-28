@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import useSWR from "swr";
 import type { NodeFileVideo, Nodes } from "../../bknd-types";
 import { api } from "../lib/bknd";
+import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 
 export function PreviewFile() {
@@ -82,6 +83,7 @@ export function PreviewFile() {
               (data.mediaNodeInfo.metadata as NodeFileVideo).height
             }
             id={data.mediaNodeInfo.id as string}
+            name={data.mediaNodeInfo.name as string}
           />
           <div>
             <Link
@@ -215,13 +217,15 @@ function ActionBar({
   mime_type,
   videoResolution,
   id,
+  name,
 }: {
   mime_type?: string;
   videoResolution: number;
   id: string;
+  name: string;
 }) {
   const [resolution, setResolution] = useState("");
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   if (!mime_type) return <div></div>;
 
@@ -236,35 +240,22 @@ function ActionBar({
           }}
         >
           <option disabled={true}>Convert</option>
-          {videoResolution >= 1080 && <option>1080p</option>}
-          {videoResolution >= 720 && <option>720p</option>}
-          {videoResolution >= 480 && <option>480p</option>}
-          {videoResolution >= 320 && <option>320p</option>}
-          {videoResolution >= 240 && <option>240p</option>}
+          {videoResolution > 1080 && <option>1080p</option>}
+          {videoResolution > 720 && <option>720p</option>}
+          {videoResolution > 480 && <option>480p</option>}
+          {videoResolution > 320 && <option>320p</option>}
+          {videoResolution > 240 && <option>240p</option>}
         </select>
         {resolution && (
           <button
             type="submit"
             className="btn btn-sm"
             onClick={async () => {
-              const res = await fetch("/api/convert", {
-                method: "POST",
-                body: JSON.stringify({
-                  id,
-                  resolution,
-                }),
-              });
-              
-              const data = await res.json();
-              console.log({ data });
-              toast.success(`converting to ${resolution}`);
-              // navigate({
-              //   to: ".",
-              //   search: (pre) => ({ ...pre, fileId: undefined }),
-              // });
+              uploadStore.beginVideoConvert({ id, name, resolution });
+              toast(`converting to ${resolution}`);
             }}
           >
-            Submit
+            Convert
           </button>
         )}
       </div>

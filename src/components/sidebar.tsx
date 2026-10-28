@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useRouteContext } from "@tanstack/react-router";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import {
   ChartPie,
@@ -19,11 +19,15 @@ import {
 import { toast } from "react-hot-toast";
 import useSWRImmutable from "swr/immutable";
 import { useUser } from "../hooks/useUser";
+import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import bytesToSize from "../utils/format-bytes";
+import { FAB } from "./fab";
+import { MusicPlayer } from "./music-player";
 
 export function Sidebar() {
   const [open, setOpen] = useLocalStorage("sidebar", true);
+  const { user } = useRouteContext({ from: "/_app" });
 
   return (
     <>
@@ -38,9 +42,13 @@ export function Sidebar() {
           <div className="flex justify-between w-full p-4">
             <Link
               to="/"
-              className="btn btn-ghost text-lg group-data-[expanded=false]:size-10 group-data-[expanded=false]:px-0"
+              className="btn w-full group-data-[expanded=true]:justify-start group-data-[expanded=true]:gap-4 btn-ghost text-lg group-data-[expanded=false]:size-10 group-data-[expanded=false]:px-0"
             >
-              <img alt="Logo" src="/favicon.svg" className="size-5" />
+              <img
+                alt="Logo"
+                src={user.preferences?.favicon ?? "/favicon.svg"}
+                className="size-5"
+              />
               <span className="group-data-[expanded=false]:hidden">App</span>
             </Link>
           </div>
@@ -51,23 +59,9 @@ export function Sidebar() {
           >
             <button
               type="button"
+              onClick={() => modalStore.setType("SEARCH")}
               className="input input-sm input-ghost hover:bg-base-300 focus:bg-base-300 cursor-pointer transition-colors focus:outline-none group-data-[expanded=false]:hidden"
             >
-              <svg
-                className="hidden size-4 shrink-0 opacity-60"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-              >
-                <title>Search</title>
-                <g fill="none">
-                  <path
-                    fillRule="evenodd"
-                    clipRule="evenodd"
-                    d="M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm-.82 4.74a6 6 0 1 1 1.06-1.06l2.79 2.79a.75.75 0 1 1-1.06 1.06l-2.79-2.79Z"
-                    fill="currentColor"
-                  ></path>
-                </g>
-              </svg>
               <span className="grow text-left">Search…</span>
               <kbd className="kbd kbd-sm font-mono opacity-50">
                 <span className="me-1 text-sm">⌘</span>K
@@ -85,6 +79,7 @@ export function Sidebar() {
               <SidebarLink link="/recent" name="Recent" Icon={RotateCcwClock} />
               <SidebarLink link="/images" name="Images" Icon={Images} />
               <SidebarLink link="/music" name="Music" Icon={Music} />
+              <MusicPlayer mini />
               <SidebarLink link="/video" name="Video" Icon={Video} />
               <SidebarLink link="/shared" name="Shared" Icon={Users} />
             </ul>
@@ -121,59 +116,6 @@ export function Sidebar() {
 
       <FAB />
     </>
-  );
-}
-
-function FAB() {
-  return (
-    <div className="fab bottom-20 md:bottom-4">
-      <button type="button" className="btn btn-circle btn-lg ">
-        <Plus size={22} />
-      </button>
-
-      {/* <!-- buttons that show up when FAB is open --> */}
-      <div className="tooltip tooltip-left" data-tip="Upload file">
-        <Link
-          to="."
-          search={(pre) => ({ ...pre, create: "FILE" })}
-          type="button"
-          className="btn btn-lg btn-circle "
-        >
-          <Upload size={14} />
-        </Link>
-      </div>
-      <div className="tooltip tooltip-left" data-tip="Create folder">
-        <Link
-          to="."
-          search={(pre) => ({ ...pre, create: "FOLDER" })}
-          type="button"
-          className="btn btn-lg btn-circle "
-        >
-          <FolderPlus size={14} />
-        </Link>
-      </div>
-      {/* <div className="tooltip" data-tip="Create Note">
-        <Link
-          to="."
-          search={(pre) => ({ ...pre, create: "NOTE" })}
-          type="button"
-          className="btn btn-lg btn-circle "
-        >
-          <NotebookPen size={14} />
-        </Link>
-      </div> */}
-
-      {/* <div className="tooltip" data-tip="Add Todo">
-        <Link
-          to="."
-          search={(pre) => ({ ...pre, create: "TODO" })}
-          type="button"
-          className="btn btn-lg btn-circle "
-        >
-          <ListTodo size={14} />
-        </Link>
-      </div> */}
-    </div>
   );
 }
 
@@ -250,13 +192,14 @@ function StorageUsed() {
     <button
       onClick={() => {
         mutate();
-        toast(`${bytesToSize(data?.size.total_size)} in use`)
+        toast(`${bytesToSize(data?.size.total_size)} in use`);
       }}
       disabled={loading}
       className={
         isOpen
-          ? "btn btn-ghost w-full justify-start gap-6" : "btn btn-ghost btn-square"
-          // : "tooltip hover:tooltip-open tooltip-right size-10 p-3 w-full "
+          ? "btn btn-ghost w-full justify-start gap-6"
+          : "btn btn-ghost btn-square"
+        // : "tooltip hover:tooltip-open tooltip-right size-10 p-3 w-full "
       }
       type="button"
       data-tip={bytesToSize(data?.size.total_size)}

@@ -1,30 +1,32 @@
+"use no memo";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Link,
   useNavigate,
   useRouteContext,
   useRouter,
   useSearch,
 } from "@tanstack/react-router";
-import { Check, CloudUpload, InfoIcon, X } from "lucide-react";
+import { Check, CloudUpload, File, Folder, InfoIcon, X } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import { useSnapshot } from "valtio/react";
 import { type UploadSchema, uploadSchema } from "../schema/upload-schema";
+import { modalStore } from "../store/modal";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
-import { createFolder } from "../utils/create-folder";
 import { buildFolderTree, createDirectories } from "../utils/directory";
+import { createFolder } from "../utils/folder";
 import bytesToSize from "../utils/format-bytes";
+import { truncateText } from "../utils/truncate-text";
 import { useToast } from "./toast-provider";
 
 export function CreateModal() {
-  const navigate = useNavigate();
-  const sp = useSearch({ strict: false });
-
+  const modal = useSnapshot(modalStore);
+  const isOpen = ["FILE:UPLOAD", "FOLDER:UPLOAD"].includes(modal.type ?? "");
   return (
-    <dialog className={cn("modal", sp.create && "modal-open")}>
+    <dialog className={cn("modal", isOpen && "modal-open")}>
       {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
       <div
         tabIndex={-1}
@@ -32,50 +34,53 @@ export function CreateModal() {
         className="modal-box p-0 focus:outline-none"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
-            navigate({
-              to: ".",
-              search: (pre) => ({ ...pre, create: undefined }),
-            });
+            modalStore.setType(null);
           }
         }}
       >
-        <CreateForm type={sp.create} />
+        <CreateForm type={modal.type} />
       </div>
       <div className="modal-backdrop backdrop-blur-xs flex flex-col">
         <div></div>
-        <Link
-          to="."
+        <button
+          type="button"
           className="min-h-[calc(100%-3rem)]"
-          search={(pre) => ({ ...pre, create: undefined })}
+          onClick={() => {
+            modalStore.setType(null);
+          }}
         >
           close
-        </Link>
+        </button>
       </div>
     </dialog>
   );
 }
 
-export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
+export function CreateForm({ type }: { type: typeof modalStore.type }) {
   const sp = useSearch({ strict: false });
   const navigate = useNavigate();
   const router = useRouter();
+  const toast = useToast();
+  const { user } = useRouteContext({ from: "/_app" });
   const form = useForm({
     resolver: zodResolver(uploadSchema),
   });
 
   useEffect(() => {
-    if (type) {
-      form.setValue("create", type);
+    if (type && type === "FILE:UPLOAD") {
+      form.setValue("create", "FILE");
+    } else if (type && type === "FOLDER:UPLOAD") {
+      form.setValue("create", "FOLDER");
     } else {
       form.reset();
     }
   }, [type, form]);
 
-  const toast = useToast();
-
-  const { user } = useRouteContext({ from: "/_app" });
-
   const onSubmit = async (form: UploadSchema) => {
+    const wakeLock = await navigator.wakeLock
+      .request("screen")
+      .catch(console.error);
+
     if (!user) {
       toast.error("User is required");
       return;
@@ -90,7 +95,6 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
           root: dirs,
           folderId,
           createFn: async (name, files, folderId) => {
-            // console.log({ name, files, folderId});
             const createdFolder = await createFolder({
               userId: user.id as string,
               folderId,
@@ -99,31 +103,27 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
             uploadStore.startUpload({
               files,
               folderId: createdFolder.folderId,
+              onFinish: async () => {
+                if (wakeLock) {
+                  await wakeLock.release();
+                }
+              },
             });
             return createdFolder;
           },
         });
         if (error > 0) {
-          toast.error("Error creating folders", {
-            duration: 3500,
-          });
+          toast.error("Error creating folders");
           return;
         }
         if (exists > 0) {
-          toast.warning("Folder already exists", {
-            duration: 3500,
-          });
+          toast.warning("Folder already exists");
           return;
         }
-        toast.success("Created folders", {
-          duration: 3500,
-        });
+        toast.success("Created folders");
 
-        toast.info("Added files to upload queue", { duration: 3500 });
-        navigate({
-          to: ".",
-          search: (prev) => ({ ...prev, create: undefined }),
-        });
+        toast.info("Added files to upload queue");
+        modalStore.setType(null);
       } else {
         const folderName = form.data.folderName;
         const folder = await createFolder({
@@ -140,10 +140,10 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
           to: ".",
           search: (pre) => ({
             ...pre,
-            create: undefined,
             folderId: folder.folderId ?? undefined,
           }),
         });
+        modalStore.setType(null);
       }
       return;
     }
@@ -157,70 +157,70 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
         folderId,
         onSucess: (data) => {
           toast.success(`${data.name} finished uploading`);
-          router.invalidate()
+          router.invalidate();
         },
         onError: (error) => {
-          toast.error(`${error} finished uploading`);
-          router.invalidate()
+          toast.error(`${error} error uploading`);
+          router.invalidate();
         },
-        onFinish: ({
+        onFinish: async ({
           completedSuccessfully,
           errorCount,
           hasError,
           sucessCount,
         }) => {
+          if (wakeLock) {
+            await wakeLock.release();
+          }
           if (hasError) {
             toast.error(`${errorCount} files failed`);
           }
           if (completedSuccessfully) {
             toast.success(`${sucessCount} files uploaded`);
           }
-          router.invalidate()
+          router.invalidate();
         },
       });
       toast.info("Added to queue");
-      navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, create: undefined }),
-      });
+      modalStore.setType(null);
     } else {
       const files = form.data.files;
       uploadStore.startUpload({
         files,
         folderId,
         onSucess: (node) => {
-          toast.success(`${node.name} finished uploading`);
-          router.invalidate()
+          toast.success(`${truncateText(node.name, 24)} Uploaded sucessfully`);
+          router.invalidate();
         },
         onError: (error) => {
-          toast.error(`${error} finished uploading`);
-          router.invalidate()
+          toast.error(`Error uploading: ${error}`);
+          router.invalidate();
         },
-        onFinish: ({
+        onFinish: async ({
           completedSuccessfully,
           errorCount,
           hasError,
           sucessCount,
         }) => {
+          if (wakeLock) {
+            await wakeLock.release();
+          }
           if (hasError) {
             toast.error(`${errorCount} files failed`);
           }
           if (completedSuccessfully) {
             toast.success(`${sucessCount} files uploaded`);
           }
-          router.invalidate()
-
+          router.invalidate();
         },
       });
       toast.info("Added to queue");
-      navigate({
-        to: ".",
-        search: (prev) => ({ ...prev, create: undefined }),
-      });
+      modalStore.setType(null);
     }
   };
 
   if (!type) return null;
+  const createType = type.split(":")[0] as "FILE" | "FOLDER";
 
   return (
     <FormProvider {...form}>
@@ -229,49 +229,49 @@ export function CreateForm({ type }: { type?: "FILE" | "FOLDER" }) {
         className="flex flex-col gap-4 p-4"
       >
         <div className="form-control w-full">
-          {type === "FILE" || type === "FOLDER" ? (
-            <FilesForm />
-          ) : (
-            <CreateFormByType />
-          )}
+          {["FILE:UPLOAD", "FOLDER:UPLOAD"].includes(type) && <FilesForm />}
         </div>
 
         <button
           type="submit"
-          className="btn btn-primary capitalize w-full"
+          className={cn(
+            "btn  gap-2  w-full",
+            createType === "FILE" ? "btn-primary" : "btn-accent",
+          )}
           disabled={form.formState.isSubmitting}
         >
-          Create {type.toLocaleLowerCase()}
+          {createType === "FILE" ? <File size={16} /> : <Folder size={16} />}
+          <p className="capitalize">Create {createType.toLocaleLowerCase()}</p>
         </button>
       </form>
     </FormProvider>
   );
 }
 
-function CreateFormByType() {
-  const form = useFormContext<UploadSchema>();
-  const type = form.watch("create");
-
-  return (
-    <fieldset>
-      <label
-        className="capitalize label select-none"
-        htmlFor={`form_input_${type}`}
-      >
-        Create {type.toLocaleLowerCase()}
-      </label>
-      <input
-        id={`form_input_${type}`}
-        defaultValue=""
-        className="input w-full"
-        {...form.register("data")}
-      />
-      {form.formState.errors.data?.message && (
-        <p className=" mt-2 px-2">{form.formState.errors.data?.message}</p>
-      )}
-    </fieldset>
-  );
-}
+// function CreateFormByType() {
+//   const form = useFormContext<UploadSchema>();
+//   const type = form.watch("create");
+//   console.log(type);
+//   return (
+//     <fieldset>
+//       <label
+//         className="capitalize label select-none"
+//         htmlFor={`form_input_${type}`}
+//       >
+//         Create {type.toLocaleLowerCase()}
+//       </label>
+//       <input
+//         id={`form_input_${type}`}
+//         defaultValue=""
+//         className="input w-full"
+//         {...form.register("data")}
+//       />
+//       {form.formState.errors.data?.message && (
+//         <p className=" mt-2 px-2">{form.formState.errors.data?.message}</p>
+//       )}
+//     </fieldset>
+//   );
+// }
 
 function FilesForm() {
   const form = useFormContext<UploadSchema>();
@@ -334,13 +334,13 @@ function FileFolderStaticAlert() {
         <p>
           Want to upload just files ? <br />
           Use{" "}
-          <Link
+          <button
+            type="button"
             className="link"
-            to="."
-            search={(pre) => ({ ...pre, create: "FILE" })}
+            onClick={() => modalStore.setType("FILE:UPLOAD")}
           >
             Upload Files
-          </Link>{" "}
+          </button>{" "}
           to ignore folder structure and upload files only
         </p>
       </div>
@@ -351,13 +351,13 @@ function FileFolderStaticAlert() {
       <InfoIcon size={10} />
       <p>
         Uploading folders here will only upload it's file use{" "}
-        <Link
+        <button
+          type="button"
           className="link"
-          to="."
-          search={(pre) => ({ ...pre, create: "FOLDER" })}
+          onClick={() => modalStore.setType("FOLDER:UPLOAD")}
         >
           Upload Folder
-        </Link>{" "}
+        </button>{" "}
         to retain the folder structure
       </p>
     </div>
@@ -504,8 +504,9 @@ function FileRow({
             className="w-10 h-10 object-cover rounded-lg"
           />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-base-300 flex items-center justify-center text-xs font-bold uppercase">
-            {file.fileData.name.split(".").pop() || "file"}
+          <div className="w-10 h-10 rounded-lg bg-base-300 flex items-center justify-center text-xs font-bold uppercase text-nowrap">
+            {truncateText(file.fileData.name.split(".").pop() ?? "", 8) ||
+              "file"}
           </div>
         )}
         <div className="min-w-0">

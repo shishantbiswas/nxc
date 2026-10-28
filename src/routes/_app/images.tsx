@@ -24,6 +24,13 @@ export const Route = createFileRoute("/_app/images")({
 
     return { entries, isEmpty: entries.length > 0 };
   },
+  head: () => ({
+    meta: [
+      {
+        title: "Images",
+      },
+    ],
+  }),
 });
 
 function RouteComponent() {
@@ -36,29 +43,26 @@ function RouteComponent() {
   }
 
   return (
-    <>
-      <title>Images</title>
-      <div>
-        <main className="@container mt-4">
-          <ul className="grid @sm:grid-cols-2 @lg:grid-cols-3 @xl:grid-cols-4 @2xl:grid-cols-5 gap-4">
-            {entries?.map((file) => (
-              <li
-                key={file.id}
-                className="flex items-center pl-0 text-nowrap min-w-0"
-              >
-                <div className="flex items-center gap-4 min-w-0 w-full">
-                  <FileTile file={file} />
-                </div>
-              </li>
-            ))}
-          </ul>
-          {!isEmpty ? (
-            <div className="h-[70vh] flex items-center">
-              <Empty />
-            </div>
-          ) : null}
-        </main>
-      </div>
-    </>
+    <div>
+      <main className="@container mt-4">
+        <ul className="grid @sm:grid-cols-2 @lg:grid-cols-3 @xl:grid-cols-4 @2xl:grid-cols-5 gap-4">
+          {entries?.map((file) => (
+            <li
+              key={file.id}
+              className="flex items-center pl-0 text-nowrap min-w-0"
+            >
+              <div className="flex items-center gap-4 min-w-0 w-full">
+                <FileTile file={file} />
+              </div>
+            </li>
+          ))}
+        </ul>
+        {!isEmpty ? (
+          <div className="h-[70vh] flex items-center">
+            <Empty />
+          </div>
+        ) : null}
+      </main>
+    </div>
   );
 }

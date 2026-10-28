@@ -1,16 +1,20 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - .env
+  nixie:
+    image: 'ghcr.io/shishantbiswas/nxc:latest'
+    volumes:
+      - 'nixie-data:/app/dist/data'
     ports:
       - 3000:3000
-    volumes:
-      - "./uploads:/uploads"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:3000" ]
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:3000'
       interval: 15s
       timeout: 5s
       retries: 3
+
+
+volumes:
+  nixie-data:
