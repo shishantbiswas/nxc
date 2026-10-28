@@ -81,7 +81,7 @@ export function Sidebar() {
               <SidebarLink link="/music" name="Music" Icon={Music} />
               <MusicPlayer mini />
               <SidebarLink link="/video" name="Video" Icon={Video} />
-              <SidebarLink link="/shared" name="Shared" Icon={Users} />
+              {/* <SidebarLink link="/shared" name="Shared" Icon={Users} /> */}
             </ul>
           </div>
         </div>

@@ -1,0 +1,32 @@
+services:
+  nxc:
+    image: 'ghcr.io/shishantbiswas/nxc:latest'
+    user: "1000:1000"
+    volumes:
+      - 'nxc-data:/app/dist/data'
+    ports:
+      - 3000:3000 
+    env_file:
+      - .env
+    depends_on:
+      - init
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:3000'
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  init:
+    image: busybox
+    restart: 'no'
+    volumes:
+      - 'nxc-data:/app/dist/data'
+    command:
+      - sh
+      - '-c'
+      - 'mkdir -p /app/dist/data/uploads && chown -R 1000:1000 /app/dist/data'
+volumes:
+  nxc-data:

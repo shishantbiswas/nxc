@@ -42,15 +42,15 @@ export const getDB = () => {
         }),
       );
     case "libsql-remote": {
-      if (!process.env.LIBSQL_URL || !process.env.LIBSQL_TOKEN) {
+      if (!process.env.LIBSQL_URL) {
         throw new Error(
-          "Database libsql-remote doesn't have a valid configuration\nPlease add a env vars like `LIBSQL_URL=libsql://<database>.turso.io` and `LIBSQL_TOKEN=<auth_token>` or switch to 'libsql'",
+          "Database libsql-remote doesn't have a valid configuration\nPlease add a env vars like `LIBSQL_URL=libsql://<database>.turso.io` and `LIBSQL_TOKEN=<auth_token>`(optional) or switch to 'libsql'",
         );
       }
       return libsql(
         createClient({
           url: process.env.LIBSQL_URL,
-          authToken: process.env.LIBSQL_TOKEN,
+          authToken: process.env.LIBSQL_TOKEN ?? undefined,
         }),
       );
     }

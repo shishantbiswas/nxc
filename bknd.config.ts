@@ -1,3 +1,5 @@
+import { createClient } from "@libsql/client";
+import type { Users } from "bknd";
 import {
   boolean,
   type DB,
@@ -7,6 +9,7 @@ import {
   entity,
   enumm,
   json,
+  libsql,
   number,
   systemEntity,
   text,
@@ -50,14 +53,14 @@ const schema = em(
       },
       FIELD_CONFIG,
     ),
-    shared: entity(
-      "shared",
-      {
-        token: text(),
-        valid_till: datetime(),
-      },
-      FIELD_CONFIG,
-    ),
+    // shared: entity(
+    //   "shared",
+    //   {
+    //     token: text(),
+    //     valid_till: datetime(),
+    //   },
+    //   FIELD_CONFIG,
+    // ),
     users: systemEntity(
       "users",
       {
@@ -76,37 +79,40 @@ const schema = em(
     ),
     media: systemEntity("media", {}, FIELD_CONFIG),
   },
-  ({ index, relation }, { nodes, media, users, shared }) => {
+  ({ index, relation }, { nodes, media, users }) => {
     index(nodes).on(["type"]);
     index(nodes).on(["deleted_at"]);
     index(nodes).on(["mime_type"]);
 
     // USER RELATIONS
-    relation(users).manyToOne(users, { mappedBy: "manager" });
+    // relation(users).manyToOne(users, { mappedBy: "manager" });
 
     // NODE RELATIONS
     relation(nodes).manyToOne(nodes, { mappedBy: "parent" });
     relation(nodes).manyToOne(media, CASCADE);
     relation(nodes).manyToOne(users, CASCADE);
 
-    // SHARED RELATIONS
-    relation(shared).manyToOne(users, { ...CASCADE, mappedBy: "owner" });
-    relation(shared).manyToOne(users, { mappedBy: "receiver" });
-    relation(shared).manyToOne(nodes, CASCADE);
+    // // SHARED RELATIONS
+    // relation(shared).manyToOne(users, { ...CASCADE, mappedBy: "owner" });
+    // relation(shared).manyToOne(users, { mappedBy: "receiver" });
+    // relation(shared).manyToOne(nodes, CASCADE);
   },
 );
 const isDev = process.env.NODE_ENV !== "production";
 
 export default {
   connection: isDev
-    ? {
-        url: "file:dev.db",
-      }
+    ? libsql(
+        createClient({
+          url: process.env.LIBSQL_URL!,
+          authToken: process.env.LIBSQL_TOKEN ?? undefined,
+        }),
+      )
     : getDB(),
 
   options: {
     seed: async (ctx) => {
-      await ctx.app.module.auth.createUser({
+      const user = await ctx.app.module.auth.createUser({
         name: process.env.USER_NAME as string,
         email: process.env.USER_EMAIL as string,
         password: process.env.USER_PASSWORD as string,
@@ -118,10 +124,15 @@ export default {
           generateVideoPreviews: process.env.GENERATE_VIDEO_PREVIEWS ?? false,
         } as UserPreferences,
       });
+
+      if (process.env.ENABLE_DEMO) {
+        const api = ctx.app.getApi();
+        await addDemoContent(api, user).catch(console.error);
+      }
     },
     plugins: [
       timestamps({
-        entities: ["nodes", "shared"],
+        entities: ["nodes"],
       }),
       searchPlugin,
       convertVideoPlugin,
@@ -179,7 +190,6 @@ export default {
       if (!body.id || !body.type) {
         return c.json({ error: true, message: "('id'|'type') is required" });
       }
-      console.log(body.id);
       await deleteNodes(api, body.id, body.type);
       return c.json({
         sucess: true,
@@ -207,43 +217,28 @@ export default {
         },
         MEMBER: {
           permissions: [
-            {
-              permission: "system.access.api",
-              effect: "allow",
-            },
-            {
-              permission: "data.entity.create",
-              effect: "allow",
-            },
-            {
-              permission: "data.entity.delete",
-              effect: "allow",
-            },
-            {
-              permission: "data.entity.read",
-              effect: "allow",
-            },
-            {
-              permission: "data.entity.update",
-              effect: "allow",
-            },
-            {
-              permission: "media.file.read",
-              effect: "allow",
-            },
-            {
-              permission: "media.file.upload",
-              effect: "allow",
-            },
-            {
-              permission: "media.file.delete",
-              effect: "allow",
-            },
+            "system.access.api",
+            "data.entity.create",
+            "data.entity.delete",
+            "data.entity.read",
+            "data.entity.update",
+            "media.file.read",
+            "media.file.upload",
+            "media.file.delete",
           ],
         },
       },
       allow_register: false,
       jwt: { secret: process.env.JWT_SECRET },
+      default_role_register: "MEMBER",
+      strategies: {
+        password: {
+          type: "password",
+          config: {
+            hashing: "bcrypt",
+          },
+        },
+      },
     },
     media: {
       enabled: true,
@@ -351,4 +346,108 @@ async function getStoaredDataSize(db: Kysely<DB>, userId: string) {
     .select(() => [sumJsonField("metadata", "size")(db).as("total_size")])
     .executeTakeFirst();
   return result;
+}
+
+async function addDemoContent(api: Api, user: Users) {
+  await api.data.createOne("nodes", {
+    type: "FOLDER",
+    name: "Spicy Video",
+    parent_id: undefined,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  const { data: pictureFolder } = await api.data.createOne("nodes", {
+    type: "FOLDER",
+    name: "Cool Pictures",
+    parent_id: undefined,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  await api.data.createOne("nodes", {
+    type: "FOLDER",
+    name: "My Jam",
+    parent_id: undefined,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  const { data: bridge } = (await api.media
+    .upload(
+      "https://images.unsplash.com/photo-1449034446853-66c86144b0ad?ixlib=rb-4.1.0",
+      {
+        filename: "bridge.jpg",
+      },
+    )
+    .catch()) as any;
+  const { data: women } = (await api.media
+    .upload(
+      "https://images.unsplash.com/photo-1772989665252-7cb41ae759cc?fm=jpg",
+      {
+        filename: "girl.jpg",
+      },
+    )
+    .catch()) as any;
+  const { data: mr_moral } = (await api.media
+    .upload("https://i.ytimg.com/vi/uAPUkgeiFVY/maxresdefault.jpg", {
+      filename: "mr_moral.jpg",
+    })
+    .catch()) as any;
+  const { data: lucy } = (await api.media
+    .upload(
+      "https://preview.redd.it/i-just-finished-cyberpunk-edgerunners-and-im-now-broken-ask-v0-gw5vhgaqocac1.jpeg",
+      {
+        filename: "lucy.jpeg",
+      },
+    )
+    .catch()) as any;
+
+  // https://i.redd.it/htyfnnm5zdih1.jpg
+
+  await api.data.createOne("nodes", {
+    type: "FILE",
+    name: "bridge.jpg",
+    media_id: bridge.id,
+    mime_type: "image/jpg",
+    metadata: {
+      size: bridge.size,
+    },
+    parent_id: pictureFolder.id,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  await api.data.createOne("nodes", {
+    type: "FILE",
+    name: "non existent gf.jpg",
+    media_id: women.id,
+    mime_type: "image/jpg",
+    metadata: {
+      size: women.size,
+    },
+    parent_id: pictureFolder.id,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  await api.data.createOne("nodes", {
+    type: "FILE",
+    name: "mr_moral.jpg",
+    media_id: mr_moral.id,
+    mime_type: "image/jpg",
+    metadata: {
+      size: mr_moral.size,
+    },
+    parent_id: pictureFolder.id,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
+  await api.data.createOne("nodes", {
+    type: "FILE",
+    name: "lucy.jpeg",
+    media_id: lucy.id,
+    mime_type: "image/jpeg",
+    metadata: {
+      size: lucy.size,
+    },
+    parent_id: pictureFolder.id,
+    users_id: user.id as string,
+    created_at: new Date(),
+  });
 }
