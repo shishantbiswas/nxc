@@ -2,9 +2,11 @@ services:
   nixie:
     image: 'ghcr.io/shishantbiswas/nxc:latest'
     volumes:
-      - 'nixie-data:/app/dist/data'
+      - './data:/app/dist/data'
     ports:
       - 3000:3000
+    env_file:
+      - .env
     healthcheck:
       test:
         - CMD
@@ -14,7 +16,3 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
-
-
-volumes:
-  nixie-data:

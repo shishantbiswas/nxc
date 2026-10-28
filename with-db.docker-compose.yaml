@@ -1,0 +1,26 @@
+services:
+  nixie:
+    image: 'ghcr.io/shishantbiswas/nxc:latest'
+    volumes:
+      - './data:/app/dist/data'
+    env_file:
+      - .env
+    environment:
+      - LIBSQL_URL=http://db:8080
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:3000'
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  db:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    environment:
+      - SQLD_NODE=primary
+    ports:
+      - 8080:8080
+    volumes:
+      - ./data/libsql:/var/lib/sqld
