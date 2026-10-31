@@ -5,8 +5,18 @@ services:
       - './data:/app/dist/data'
     ports:
       - 3000:3000
-    env_file:
-      - .env
+    environment:
+      - USER_EMAIL=shishantbiswas@gmail.com
+      - USER_PASSWORD=90099009
+      - USER_NAME=Shishant Biswas
+      - JWT_SECRET=e984e136ccc85409bbe7c13498fbc8521f6be58dcfbf3df630ab92e52dabf8dd
+      - PORT=3000
+      - DB_TYPE=libsql-remote
+      - LIBSQL_URL=https://5xuwax6v64kb8z74tjlxpcal.service.bsws.in
+      - STORAGE_TYPE=S3
+      - S3_ACCESS_KEY=02KVmP3qrZquqyGbcguF
+      - S3_SECRET_ACCESS_KEY=CV4DmAwEALXjOngHnrMm4xcH5AOlwIgOHFZXcXXy
+      - S3_URL_WITH_BUCKET=https://silo.service.bsws.in/nixie
     healthcheck:
       test:
         - CMD

@@ -1,15 +1,17 @@
 import { createClient } from "@libsql/client";
-import { libsql } from "bknd";
+import { libsql, pg } from "bknd";
 import {
   //bunSqlite,
   registerLocalMediaAdapter,
 } from "bknd/adapter/bun";
+import { nodeSqlite } from "bknd/adapter/node";
+import { Pool } from "pg";
 import { z } from "zod";
 
 const schema = z.object({
   db: z.enum([
-    // "postgres",
-    // "sqlite",
+    "postgres",
+    "sqlite",
     "libsql",
     "libsql-remote",
     "libsql-remote-embedded-replicas",
@@ -69,29 +71,29 @@ export const getDB = () => {
         }),
       );
     }
-    // case "sqlite":
-    //   return bunSqlite({
-    //     url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
-    //     onCreateConnection: async (db) => {
-    //       // const load = await import("sqlite-vec").then((mod) => mod.load);
-    //       // load(db);
-    //       db.run("PRAGMA journal_mode = WAL;");
-    //       db.run("PRAGMA synchronous = NORMAL;");
-    //       db.run("PRAGMA busy_timeout = 5000;");
-    //       db.run("PRAGMA foreign_keys = ON;");
-    //     },
-    //   });
-    // case "postgres":
-    //   if (!process.env.POSTGRES_URL) {
-    //     throw new Error(
-    //       "Database postgres doesn't have a valid postgres connection string\nPlease add a env var like `POSTGRES_URL=postgresql://user:password@localhost:5432/database`",
-    //     );
-    //   }
-    //   return pg({
-    //     pool: new Pool({
-    //       connectionString: process.env.POSTGRES_URL,
-    //     }),
-    //   });
+    case "sqlite":
+      return nodeSqlite({
+        url: `file:${process.env.DATABASE_PATH ? process.env.DATABASE_PATH : "data/local.db"}`,
+        onCreateConnection: async (db) => {
+          // const load = await import("sqlite-vec").then((mod) => mod.load);
+          // load(db);
+          db.exec("PRAGMA journal_mode = WAL;");
+          db.exec("PRAGMA synchronous = NORMAL;");
+          db.exec("PRAGMA busy_timeout = 5000;");
+          db.exec("PRAGMA foreign_keys = ON;");
+        },
+      });
+    case "postgres":
+      if (!process.env.POSTGRES_URL) {
+        throw new Error(
+          "Database postgres doesn't have a valid postgres connection string\nPlease add a env var like `POSTGRES_URL=postgresql://user:password@localhost:5432/database`",
+        );
+      }
+      return pg({
+        pool: new Pool({
+          connectionString: process.env.POSTGRES_URL,
+        }),
+      });
   }
 };
 

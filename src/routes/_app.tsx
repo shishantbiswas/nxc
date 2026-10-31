@@ -20,6 +20,7 @@ import {
   Music,
   Plus,
   RotateCcwClock,
+  Search,
   Settings,
   Sun,
   Trash,
@@ -35,6 +36,7 @@ import useSWR from "swr";
 import { useSnapshot } from "valtio/react";
 import { Drawer } from "vaul";
 import { z } from "zod";
+import de from "zod/v4/locales/de.cjs";
 import type { Nodes } from "../../bknd-types";
 import { CreateModal } from "../components/create-modal";
 import { PreviewFile } from "../components/preview";
@@ -44,6 +46,7 @@ import { UploadIndicator } from "../components/upload-progress-badge";
 import { api } from "../lib/bknd";
 import { getFilePreviewByMimeType } from "../lib/get-file-preview-by-mime-type";
 import { type ModalType, modalStore } from "../store/modal";
+import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 import { truncateText } from "../utils/truncate-text";
 
@@ -92,32 +95,6 @@ export const Route = createFileRoute("/_app")({
 });
 
 function AppLayout() {
-  // useEffect(() => {
-  //   let wakeLock: WakeLockSentinel | null = null;
-  //   const unsubscribe = subscribe(uploadStore, async () => {
-  //     const tasks = Object.values(uploadStore.tasks);
-  //     if (tasks.length === 0) return;
-  //     const completed = tasks.every((t) => t.status === "completed");
-  //     const isUploading = tasks.some((t) => t.status === "uploading");
-  //     if (isUploading && !wakeLock) {
-  //       try {
-  //         wakeLock = await navigator.wakeLock.request("screen");
-  //       } catch (err) {
-  //         console.error("Wake lock request denied or failed:", err);
-  //       }
-  //     } else if (completed && wakeLock) {
-  //       await wakeLock.release();
-  //       wakeLock = null;
-  //     }
-  //   });
-  //   return () => {
-  //     unsubscribe();
-  //     if (wakeLock) {
-  //       wakeLock.release().catch(() => {});
-  //     }
-  //   };
-  // }, []);
-
   const [sidebar] = useLocalStorage("sidebar", true);
   const { user } = Route.useRouteContext();
   return (
@@ -155,7 +132,7 @@ function AppLayout() {
 }
 
 function FileOpsModal() {
-  const { type, selectedNodes } = useSnapshot(modalStore);
+  const { type, selectedNodes, deletedNodes } = useSnapshot(modalStore);
   const [move, setMove] = useState<null | { id: string | null; name: string }>(
     null,
   );
@@ -175,7 +152,7 @@ function FileOpsModal() {
     <dialog
       className={cn(
         "modal",
-        ["FILE:MOVE"].includes(type ?? "") && "modal-open",
+        ["FILE:MOVE", "FILE:DELETE"].includes(type ?? "") && "modal-open",
       )}
     >
       {/** biome-ignore lint/a11y/noStaticElementInteractions: modal needs to be in focus */}
@@ -218,37 +195,33 @@ function FileOpsModal() {
               </select>
             </fieldset>
           )}
-          <div className="flex gap-2 justify-end">
-            {/* {type === "FILE:DELETE" && (
+          <div className="flex gap-2 justify-end mt-8">
+            {type === "FILE:DELETE" && (
               <button
                 type="button"
                 className="btn btn-error"
                 onClick={async () => {
-                  await api.data
-                    .updateMany(
-                      "nodes",
-                      {
-                        id: { $in: [...selectedNodes] },
-                      },
-                      { deleted_at: new Date() },
-                    )
-                    .then(() => {
-                      toast(`Trashed ${selectedNodes.length} Files/Folder`);
-                      modalStore.setSelectedNodes([]);
-                      modalStore.setType(null);
-                      router.invalidate();
+                  for (const node of deletedNodes) {
+                    await fetch("/api/delete", {
+                      method: "POST",
+                      body: JSON.stringify({
+                        id: node.id,
+                        type: node.type,
+                      }),
                     })
-                    .catch(() => {
-                      toast.error(
-                        `Error deleting ${selectedNodes.length} Files/Folder`,
-                      );
-                    });
+                      .then(null)
+                      .catch(console.error);
+                  }
+                  toast(`${deletedNodes.length} Files/Folders deleted`);
+                  modalStore.setDeletedNodes([]);
+                  modalStore.setType(null);
+                  router.invalidate();
                 }}
               >
                 <Trash size={14} />
-                Delete ({selectedNodes.length})
+                Delete ({deletedNodes.length})
               </button>
-            )} */}
+            )}
             {move && (
               <button
                 type="button"
@@ -622,6 +595,17 @@ function Topbar() {
       </div>
       <div className="flex items-center justify-center gap-4">
         {/* <Link to="." search={(pre) => ({ ...pre, create: "FILE" })}> */}
+
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"
+          data-tip={"Search"}
+          onClick={() => {
+            modalStore.setType("SEARCH");
+          }}
+        >
+          <Search className="size-5 swap-off" />
+        </button>
         <button
           type="button"
           className="btn btn-sm btn-ghost hover:btn-soft btn-square tooltip tooltip-bottom"

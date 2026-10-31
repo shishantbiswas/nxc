@@ -34,17 +34,6 @@ function RouteComponent() {
             Monitor and manage individual background file queues/uploads
           </p>
         </div>
-        {/* <div className="flex gap-2">
-          {completedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => uploadStore.clearCompleted()}
-              className="btn btn-outline btn-sm"
-            >
-              Clear Completed
-            </button>
-          )}
-        </div> */}
       </div>
 
       {/* Summary Stats */}
@@ -78,6 +67,17 @@ function RouteComponent() {
         <div className="stat">
           <div className="stat-title">Failed</div>
           <div className="stat-value">{errorCount}</div>
+          {errorCount > 0 && (
+            <div className="stat-actions">
+              <button
+                type="button"
+                className="btn btn-xs "
+                onClick={() => uploadStore.clearError()}
+              >
+                Clear Error
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

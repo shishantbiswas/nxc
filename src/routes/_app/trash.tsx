@@ -1,12 +1,23 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Folder, RotateCcwClock, TrashOff } from "lucide-react";
+import { useLocalStorage } from "@uidotdev/usehooks";
+import {
+  Folder,
+  Grid3X3,
+  RotateCcwClock,
+  TableProperties,
+  TrashOff,
+} from "lucide-react";
+import { TableVirtuoso } from "react-virtuoso";
+import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../../bknd-types";
 import { Empty } from "../../components/empty";
 import { useToast } from "../../components/toast-provider";
 import { api } from "../../lib/bknd";
 import formatDateOrTime from "../../lib/format-date-time";
 import { getFileIconByMimeType } from "../../lib/get-file-icon-by-mime-type";
+import { modalStore } from "../../store/modal";
 import bytesToSize from "../../utils/format-bytes";
+import { truncateText } from "../../utils/truncate-text";
 
 export const Route = createFileRoute("/_app/trash")({
   component: RouteComponent,
@@ -26,7 +37,7 @@ export const Route = createFileRoute("/_app/trash")({
         by: "type",
         dir: "desc",
       },
-      limit: 256,
+      limit: 4096,
     });
 
     return {
@@ -75,34 +86,136 @@ function NodeTable({
 }) {
   const router = useRouter();
   const toast = useToast();
+  const { deletedNodes } = useSnapshot(modalStore);
+  const [grid, setGrid] = useLocalStorage("layout", true);
 
   return (
-    <table className="table">
-      {/* head */}
-      <thead>
-        <tr>
-          {/* <th>
-            <label>
-              <input type="checkbox" className="checkbox" />
-            </label>
-          </th> */}
-          <th>Name</th>
-          <th>Size</th>
-          <th>Delete At</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        {nodes.map((node) => {
-          const FileIcon = getFileIconByMimeType(node.mime_type);
-
+    <>
+      <div className="flex items-center justify-between">
+        <div></div>
+        <div className="flex items-center gap-2">
+          {deletedNodes.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="btn btn-sm text-sm! btn-info"
+                onClick={async () => {
+                  await api.data
+                    .updateMany(
+                      "nodes",
+                      {
+                        id: { $in: [...deletedNodes] },
+                      },
+                      // @ts-expect-error
+                      { deleted_at: null },
+                    )
+                    .then(() => {
+                      toast(`Restored ${deletedNodes.length} Files/Folder`);
+                      modalStore.setDeletedNodes([]);
+                      modalStore.setType(null);
+                      router.invalidate();
+                    })
+                    .catch(() => {
+                      toast.error(
+                        `Error deleting ${deletedNodes.length} Files/Folder`,
+                      );
+                    });
+                }}
+              >
+                Restore ({deletedNodes.length})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm text-sm! btn-error"
+                onClick={() => modalStore.setType("FILE:DELETE")}
+              >
+                Delete Permanently ({deletedNodes.length})
+              </button>
+            </>
+          )}
+          <label
+            className="btn btn-square swap swap-rotate tooltip hover:tooltip-open tooltip-left"
+            data-tip={`Swap to ${grid ? "Table" : "Grid"} View`}
+          >
+            <input
+              type="checkbox"
+              onChange={() => setGrid(!grid)}
+              defaultChecked={grid}
+            />
+            <TableProperties className="swap-on rotate-180" />
+            <Grid3X3 className="swap-off" />
+          </label>
+        </div>
+      </div>
+      <TableVirtuoso
+        className="h-full scrollbar-none mt-4"
+        data={nodes}
+        components={{
+          Table: (props) => <table {...props} className="table" />,
+          TableRow: (props) => <tr {...props} className="group" />,
+          TableBody: (props) => <tbody {...props} className="h-fit" />,
+        }}
+        fixedHeaderContent={() => {
           return (
-            <tr key={node.id} className="group">
-              {/* <th>
+            <tr className="bg-base-300/90">
+              <th>
                 <label>
-                  <input type="checkbox" className="checkbox" />
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={deletedNodes.length === nodes.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        modalStore.setDeletedNodes(
+                          nodes.map((node) => ({
+                            id: node.id,
+                            type: node.type,
+                          })),
+                        );
+                      } else {
+                        modalStore.setDeletedNodes([]);
+                      }
+                    }}
+                  />
                 </label>
-              </th> */}
+              </th>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Delete At</th>
+              <th>Action</th>
+            </tr>
+          );
+        }}
+        itemContent={(index, node) => {
+          const FileIcon = getFileIconByMimeType(node.mime_type);
+          const isChecked = deletedNodes.some(
+            (e) => e.id === node.id && e.type === node.type,
+          );
+          return (
+            <>
+              <th>
+                <label>
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-sm"
+                    checked={isChecked}
+                    onChange={() => {
+                      if (isChecked) {
+                        const filtered = deletedNodes.filter(
+                          (e) => e.id !== node.id,
+                        );
+                        modalStore.setDeletedNodes(filtered);
+                      } else {
+                        const filtered = [
+                          ...deletedNodes,
+                          { id: node.id, type: node.type },
+                        ];
+                        modalStore.setDeletedNodes(filtered);
+                      }
+                    }}
+                  />
+                </label>
+              </th>
               <td>
                 <div className="flex items-center gap-3">
                   <div className="avatar">
@@ -133,14 +246,16 @@ function NodeTable({
                           })}
                       className="font-semibold truncate"
                     >
-                      {node.name}
+                      {truncateText(node.name, 32)}
                     </Link>
                     <div className="text-sm opacity-50">{node.mime_type}</div>
                   </div>
                 </div>
               </td>
               {node.type === "FILE" ? (
-                <td>{bytesToSize(node.metadata.size)}</td>
+                <td className="text-nowrap">
+                  {bytesToSize(node.metadata?.size ?? 4096)}
+                </td>
               ) : (
                 <td></td>
               )}
@@ -149,57 +264,50 @@ function NodeTable({
                 {formatDateOrTime(node.deleted_at as string)}
               </td>
 
-              <td className="flex gap-2">
-                <div className="tooltip" data-tip="Restore">
-                  <button
-                    type="button"
-                    className="btn btn-square btn-sm btn-ghost"
-                    onClick={async () => {
-                      await api.data.updateOne("nodes", node.id, {
-                        // @ts-expect-error types are misrepresented
-                        deleted_at: null,
-                      });
-                      router.invalidate();
-                      toast.success(`${node.type} restored`);
-                    }}
-                  >
-                    <RotateCcwClock size={14} />
-                  </button>
-                </div>
-                <div className="tooltip" data-tip="Delete permanently">
-                  <button
-                    type="button"
-                    className="btn btn-square btn-sm btn-ghost hover:btn-error"
-                    onClick={async () => {
-                      alert("Are you sure about that ?");
-                      const res = await fetch("/api/delete", {
-                        method: "POST",
-                        body: JSON.stringify({ id: node.id, type: node.type }),
-                      });
-                      const json = await res.json();
-                      // console.log({ json });
-                      router.invalidate();
-                      toast.info(`${node.type} deleted`);
-                    }}
-                  >
-                    <TrashOff size={14} />
-                  </button>
+              <td>
+                <div className="flex gap-2">
+                  <div className="tooltip" data-tip="Restore">
+                    <button
+                      type="button"
+                      className="btn btn-square btn-sm btn-ghost"
+                      onClick={async () => {
+                        await api.data.updateOne("nodes", node.id, {
+                          // @ts-expect-error types are misrepresented
+                          deleted_at: null,
+                        });
+                        router.invalidate();
+                        toast.success(`${node.type} restored`);
+                      }}
+                    >
+                      <RotateCcwClock size={14} />
+                    </button>
+                  </div>
+                  <div className="tooltip" data-tip="Delete permanently">
+                    <button
+                      type="button"
+                      className="btn btn-square btn-sm btn-ghost hover:btn-error"
+                      onClick={async () => {
+                        const res = await fetch("/api/delete", {
+                          method: "POST",
+                          body: JSON.stringify({
+                            id: node.id,
+                            type: node.type,
+                          }),
+                        });
+                        const json = await res.json();
+                        router.invalidate();
+                        toast.info(`${node.type} deleted`);
+                      }}
+                    >
+                      <TrashOff size={14} />
+                    </button>
+                  </div>
                 </div>
               </td>
-            </tr>
+            </>
           );
-        })}
-      </tbody>
-      {/* foot */}
-      {/* <tfoot>
-          <tr>
-            <th></th>
-            <th>Name</th>
-            <th>Size</th>
-            <th>Delete At</th>
-            <th>Action</th>
-          </tr>
-        </tfoot> */}
-    </table>
+        }}
+      />
+    </>
   );
 }

@@ -75,6 +75,7 @@ export const uploadStore = proxy<{
   cancelTask: (id: string) => void;
 
   clearCompleted: () => void;
+  clearError: () => void;
 }>({
   tasks: {},
 
@@ -90,21 +91,53 @@ export const uploadStore = proxy<{
     };
     Object.assign(uploadStore.tasks, { [id]: newTasks });
     const taskUpload = uploadStore.tasks[id];
-    const res = await fetch("/api/convert", {
-      method: "POST",
-      body: JSON.stringify({
-        id,
-        resolution,
-      }),
-    });
+    try {
+      const convertResponse = await fetch("/api/convert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          id,
+          resolution,
+        }),
+      });
+      if (!convertResponse.body) return;
+      const reader = convertResponse.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
 
-    const data = await res.json();
-    if (data.sucess) {
-      taskUpload.status = "completed";
-      taskUpload.progress.percentage = 100;
-      taskUpload.progress.totalBytes = 0;
-      taskUpload.progress.totalTransfered = 0;
-    } else {
+      while (!done) {
+        const { value, done: readingDone } = await reader.read();
+        done = readingDone;
+        if (done) {
+          taskUpload.status = "completed";
+        }
+
+        if (value) {
+          const chunk = decoder.decode(value, { stream: !done });
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const dataContent = JSON.parse(
+                  line.replace("data: ", "").trim(),
+                );
+                taskUpload.progress.percentage = dataContent.percentage ?? 0;
+                taskUpload.progress.totalBytes = dataContent.totalBytes ?? 0;
+                taskUpload.size = dataContent.totalBytes ?? 0;
+                taskUpload.progress.totalTransfered =
+                  dataContent.receivedBytes ?? 0;
+              } catch (error) {
+                console.log(error, id);
+              }
+            }
+          }
+        }
+      }
+      // onSucess?.({ url, id, name, folderId });
+    } catch (error) {
       taskUpload.status = "error";
     }
   },
@@ -143,10 +176,10 @@ export const uploadStore = proxy<{
       const id = taskIds[i];
       const file = files[i].fileData;
       const fileExists = await fileExistsByName(file.name, folderId);
-      if(fileExists){
-          uploadStore.tasks[id].status = "error";
-          uploadStore.tasks[id].error = "File already exists in that folder";
-        return
+      if (fileExists) {
+        uploadStore.tasks[id].status = "error";
+        uploadStore.tasks[id].error = "File already exists in that folder";
+        continue;
       }
       const ext =
         file.name.lastIndexOf(".") !== -1
@@ -296,6 +329,7 @@ export const uploadStore = proxy<{
       });
 
       if (!progressResponse.body) return;
+      uploadStore.tasks[id].status = "uploading";
 
       const reader = progressResponse.body.getReader();
       const decoder = new TextDecoder();
@@ -313,12 +347,18 @@ export const uploadStore = proxy<{
           const lines = chunk.split("\n");
           for (const line of lines) {
             if (line.startsWith("data: ")) {
-              const dataContent = JSON.parse(line.replace("data: ", "").trim());
-              taskUpload.progress.percentage = dataContent.percentage ?? 0;
-              taskUpload.progress.totalBytes = dataContent.totalBytes ?? 0;
-              taskUpload.size = dataContent.totalBytes ?? 0;
-              taskUpload.progress.totalTransfered =
-                dataContent.receivedBytes ?? 0;
+              try {
+                const dataContent = JSON.parse(
+                  line.replace("data: ", "").trim(),
+                );
+                taskUpload.progress.percentage = dataContent.percentage ?? 0;
+                taskUpload.progress.totalBytes = dataContent.totalBytes ?? 0;
+                taskUpload.size = dataContent.totalBytes ?? 0;
+                taskUpload.progress.totalTransfered =
+                  dataContent.receivedBytes ?? 0;
+              } catch (error) {
+                console.log(error, id);
+              }
             }
           }
         }
@@ -350,6 +390,14 @@ export const uploadStore = proxy<{
   clearCompleted() {
     Object.keys(uploadStore.tasks).forEach((id) => {
       if (uploadStore.tasks[id].status === "completed") {
+        delete uploadStore.tasks[id];
+      }
+    });
+  },
+
+  clearError() {
+    Object.keys(uploadStore.tasks).forEach((id) => {
+      if (uploadStore.tasks[id].status === "error") {
         delete uploadStore.tasks[id];
       }
     });

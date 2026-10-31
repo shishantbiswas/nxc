@@ -8,17 +8,24 @@ export type ModalType =
   | "SEARCH"
   | null;
 
-export const modalStore = proxy<{
+interface ModalState {
   type: ModalType;
   setType: (type: ModalType) => void;
   selectedNodes: string[];
   setSelectedNodes: (data: string[]) => void;
-}>({
+  deletedNodes: { id: string; type: string }[];
+  setDeletedNodes: (data: { id: string; type: string }[]) => void;
+}
+
+export const modalStore = proxy<ModalState>({
   type: null,
-  setType(type) {
-    if (!type) modalStore.type = null;
-    modalStore.type = type;
-  },
+  setType: (type) => (modalStore.type = type),
   selectedNodes: [],
-  setSelectedNodes: (data) => (modalStore.selectedNodes = data),
+  setSelectedNodes: (data) => {
+    modalStore.selectedNodes = data;
+  },
+  deletedNodes: [],
+  setDeletedNodes: (data) => {
+    modalStore.deletedNodes = data;
+  },
 });

@@ -83,7 +83,7 @@ export const Route = createFileRoute("/_app/")({
         },
       limit: 1024,
     });
-    sortStore.setNodes(entries, "metadata.size", "desc");
+    sortStore.setNodes(entries, "created_at", "desc");
 
     return {
       entries: entries.data,
@@ -191,7 +191,7 @@ function Index() {
       </div>
       {isEmpty ? (
         <div className="h-[70vh] flex items-center">
-          <Empty />
+          <Empty title="No Files Found"/>
         </div>
       ) : grid ? (
         <NodeGrid nodes={nodes as typeof sortStore.nodes} />
@@ -401,7 +401,9 @@ function NodeTable({
                 </div>
               </td>
               {node.type === "FILE" ? (
-                <td className="text-nowrap">{bytesToSize(node?.metadata?.size)}</td>
+                <td className="text-nowrap">
+                  {bytesToSize(node?.metadata?.size)}
+                </td>
               ) : (
                 <td className="text-nowrap">4 KB</td>
               )}

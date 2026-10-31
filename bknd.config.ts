@@ -15,7 +15,7 @@ import {
   text,
 } from "bknd";
 import type { FrameworkBkndConfig } from "bknd/adapter";
-import { registerLocalMediaAdapter } from "bknd/adapter/node";
+import { nodeSqlite, registerLocalMediaAdapter } from "bknd/adapter/node";
 import type { Api } from "bknd/client";
 import { timestamps } from "bknd/plugins";
 import { type Kysely, sql } from "kysely";
@@ -37,30 +37,6 @@ const CASCADE = {
 
 const schema = em(
   {
-    nodes: entity(
-      "nodes",
-      {
-        name: text().required(),
-        type: enumm({
-          enum: ["FOLDER", "FILE"],
-          default_value: "FILE",
-        }).required(),
-
-        mime_type: text(),
-        isFavourite: boolean(),
-        metadata: json<NodeFileMeta>(),
-        deleted_at: datetime(),
-      },
-      FIELD_CONFIG,
-    ),
-    // shared: entity(
-    //   "shared",
-    //   {
-    //     token: text(),
-    //     valid_till: datetime(),
-    //   },
-    //   FIELD_CONFIG,
-    // ),
     users: systemEntity(
       "users",
       {
@@ -78,14 +54,38 @@ const schema = em(
       FIELD_CONFIG,
     ),
     media: systemEntity("media", {}, FIELD_CONFIG),
+    nodes: entity(
+      "nodes",
+      {
+        name: text().required(),
+        type: enumm({
+          enum: ["FOLDER", "FILE"],
+          default_value: "FILE",
+        }).required(),
+
+        mime_type: text(),
+        is_favourite: boolean(),
+        metadata: json<NodeFileMeta>(),
+        deleted_at: datetime(),
+      },
+      FIELD_CONFIG,
+    ),
+    shared: entity(
+      "shared",
+      {
+        token: text(),
+        valid_till: datetime(),
+      },
+      FIELD_CONFIG,
+    ),
   },
-  ({ index, relation }, { nodes, media, users }) => {
+  ({ index, relation }, { nodes, media, users, shared }) => {
     index(nodes).on(["type"]);
     index(nodes).on(["deleted_at"]);
     index(nodes).on(["mime_type"]);
 
     // USER RELATIONS
-    // relation(users).manyToOne(users, { mappedBy: "manager" });
+    relation(users).manyToOne(users, { mappedBy: "manager" });
 
     // NODE RELATIONS
     relation(nodes).manyToOne(nodes, { mappedBy: "parent" });
@@ -93,21 +93,21 @@ const schema = em(
     relation(nodes).manyToOne(users, CASCADE);
 
     // // SHARED RELATIONS
-    // relation(shared).manyToOne(users, { ...CASCADE, mappedBy: "owner" });
-    // relation(shared).manyToOne(users, { mappedBy: "receiver" });
-    // relation(shared).manyToOne(nodes, CASCADE);
+    relation(shared).manyToOne(users, { ...CASCADE, mappedBy: "owner" });
+    relation(shared).manyToOne(users, { mappedBy: "receiver" });
+    relation(shared).manyToOne(nodes, CASCADE);
   },
 );
 const isDev = process.env.NODE_ENV !== "production";
 
 export default {
   connection: isDev
-    ? libsql(
-        createClient({
-          url: process.env.LIBSQL_URL!,
-          authToken: process.env.LIBSQL_TOKEN ?? undefined,
-        }),
-      )
+    ? nodeSqlite({
+        url: "file:dev.db",
+        onCreateConnection: (db) => {
+          db.exec("PRAGMA journal_mode = WAL;");
+        },
+      })
     : getDB(),
 
   options: {
@@ -190,7 +190,7 @@ export default {
       if (!body.id || !body.type) {
         return c.json({ error: true, message: "('id'|'type') is required" });
       }
-      await deleteNodes(api, body.id, body.type);
+      await deleteNodes(api, body.id, body.type).catch(console.error);
       return c.json({
         sucess: true,
         message: "files/folder deleted successfully",
@@ -273,8 +273,9 @@ async function deleteNodes(api: Api, id: string, type: "FILE" | "FOLDER") {
             .deleteFile(node.metadata.preview as string)
             .catch(console.error);
         }
-
-        await api.media.deleteFile(node.media!.path).catch(console.error);
+        if (node.media?.path) {
+          await api.media.deleteFile(node.media.path).catch(console.error);
+        }
 
         await api.data.deleteOne("nodes", node.id);
       }

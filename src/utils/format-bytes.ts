@@ -1,8 +1,8 @@
 export default function bytesToSize(bytes?: number): string {
   if (!bytes) return "0 Byte";
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
 
-  if (bytes === 0) return "0 Byte";
+  if (bytes === 0) return "0 B";
 
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const size = (bytes / 1024 ** i).toFixed(2);

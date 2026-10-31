@@ -3,17 +3,13 @@ import { useLocalStorage } from "@uidotdev/usehooks";
 import {
   ChartPie,
   Files,
-  FolderPlus,
   Images,
   type LucideIcon,
   Music,
   PanelLeftClose,
   PanelLeftOpen,
-  Plus,
   RotateCcwClock,
   Trash,
-  Upload,
-  Users,
   Video,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
@@ -176,9 +172,10 @@ function User() {
 function StorageUsed() {
   const [isOpen] = useLocalStorage("sidebar", false);
 
-  const { data, error, isLoading, isValidating, mutate } = useSWRImmutable(
-    "/api/storage-usage",
-    async (url) => fetch(url).then((res) => res.json()),
+  const { data, error, isLoading, isValidating, mutate } = useSWRImmutable<{
+    size: { total_size: number };
+  }>("/api/storage-usage", async (url: string) =>
+    fetch(url).then((res) => res.json()),
   );
 
   if (error) {
@@ -191,8 +188,9 @@ function StorageUsed() {
   return (
     <button
       onClick={() => {
-        mutate();
-        toast(`${bytesToSize(data?.size.total_size)} in use`);
+        mutate().then((data) => {
+          toast(`${bytesToSize(data?.size.total_size)} in use`);
+        });
       }}
       disabled={loading}
       className={

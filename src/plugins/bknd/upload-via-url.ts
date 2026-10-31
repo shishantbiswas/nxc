@@ -53,7 +53,6 @@ export const uploadViaUrlPlugin: AppPlugin = (app) => ({
       if (!response.body) {
         return c.json({ error: true, message: "body is empty" });
       }
-      console.log({ headers: response.headers });
       const contentLength = response.headers.get("content-length");
       const contentDisposition = response.headers.get("content-disposition");
       const contentType =
@@ -183,10 +182,25 @@ export const uploadViaUrlPlugin: AppPlugin = (app) => ({
 });
 
 function getFilenameFromContentDisposition(content?: string | null) {
-  if (!content) return;
-  var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-  var matches = filenameRegex.exec(content);
-  if (matches?.[1]) {
-    return matches[1].replace(/['"]/g, "");
+  if (!content) return null;
+
+  const utf8FilenameRegex = /filename\*=UTF-8''([\w%\-.]+)(?:; ?|$)/i;
+  const asciiFilenameRegex = /^filename=(["']?)(.*?[^\\])\1(?:; ?|$)/i;
+
+  // 1. Try to extract UTF-8 encoded filename
+  if (utf8FilenameRegex.test(content)) {
+    return decodeURIComponent(utf8FilenameRegex.exec(content)![1]);
   }
+
+  // 2. Fallback to standard ASCII filename
+  const filenameStart = content.toLowerCase().indexOf("filename=");
+  if (filenameStart >= 0) {
+    const partialDisposition = content.slice(filenameStart);
+    const matches = asciiFilenameRegex.exec(partialDisposition);
+    if (matches?.[2]) {
+      return matches[2];
+    }
+  }
+
+  return null;
 }
