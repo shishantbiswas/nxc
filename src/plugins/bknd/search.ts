@@ -70,8 +70,13 @@ export const searchPlugin: AppPlugin = (app) => ({
         );
       }
       const ftsRes = await searchFiles(db, search);
+      
+      if (ftsRes.length === 0) {
+        console.log(ftsRes)
+        return c.json({ result: [] });
+      }
+      
       const ids = ftsRes.map((it) => it.id);
-
       const { data } = await api.data.readMany("nodes", {
         with: ["media"],
         where: {

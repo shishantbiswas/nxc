@@ -1,0 +1,49 @@
+services:
+  nixie:
+    # image: 'ghcr.io/shishantbiswas/nxc:latest'
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - './data:/app/dist/data'
+    ports:
+      - 3000:3000
+    environment:
+      - DB_TYPE=postgres
+      - POSTGRES_URL=postgres://nixiedb:5134b0c2454cc6e64b714815588e163f@postgres/nixiedb
+      - USER_NAME=Drive Admin
+      - USER_EMAIL=admin@example.com
+      - USER_PASSWORD=change-this-password
+      - JWT_SECRET=vsn90c9nw3u8v09rfbn97brw980v7b03w9b8v7rw89pbvr7620
+      - STORAGE_TYPE=local
+      - LOCAL_STORAGE_PATH=data/uploads
+    depends_on:
+      - postgres
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - '-f'
+        - 'http://localhost:3000'
+      interval: 15s
+      timeout: 5s
+      retries: 3
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nixiedb
+      POSTGRES_PASSWORD: 5134b0c2454cc6e64b714815588e163f # openssl rand -hex 32
+      POSTGRES_DB: nixiedb
+    ports:
+      - 5432:5432
+    volumes:
+      - nixiedb_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "nixiedb"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  nixiedb_data:

@@ -172,10 +172,20 @@ function User() {
 function StorageUsed() {
   const [isOpen] = useLocalStorage("sidebar", false);
 
-  const { data, error, isLoading, isValidating, mutate } = useSWRImmutable<{
-    size: { total_size: number };
-  }>("/api/storage-usage", async (url: string) =>
-    fetch(url).then((res) => res.json()),
+  const {
+    data: total_size,
+    error,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useSWRImmutable<number>("/api/storage-usage", async (url: string) =>
+    fetch(url).then(async (res) => {
+      const data = (await res.json()) as {
+        size: { total_size: number };
+      };
+      if (data.size.total_size) return Number(data.size.total_size);
+      return 0;
+    }),
   );
 
   if (error) {
@@ -188,8 +198,8 @@ function StorageUsed() {
   return (
     <button
       onClick={() => {
-        mutate().then((data) => {
-          toast(`${bytesToSize(data?.size.total_size)} in use`);
+        mutate().then((total_size) => {
+          toast(`${bytesToSize(total_size)} in use`);
         });
       }}
       disabled={loading}
@@ -200,12 +210,12 @@ function StorageUsed() {
         // : "tooltip hover:tooltip-open tooltip-right size-10 p-3 w-full "
       }
       type="button"
-      data-tip={bytesToSize(data?.size.total_size)}
+      data-tip={bytesToSize(total_size)}
     >
       {isOpen ? (
         <>
           <ChartPie size={16} />{" "}
-          <p className="text-sm">{bytesToSize(data?.size.total_size)}</p>
+          <p className="text-sm">{bytesToSize(total_size)}</p>
         </>
       ) : (
         <ChartPie size={16} />

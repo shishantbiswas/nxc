@@ -1,4 +1,3 @@
-import { createClient } from "@libsql/client";
 import type { Users } from "bknd";
 import {
   boolean,
@@ -9,8 +8,8 @@ import {
   entity,
   enumm,
   json,
-  libsql,
   number,
+  pg,
   systemEntity,
   text,
 } from "bknd";
@@ -19,6 +18,7 @@ import { nodeSqlite, registerLocalMediaAdapter } from "bknd/adapter/node";
 import type { Api } from "bknd/client";
 import { timestamps } from "bknd/plugins";
 import { type Kysely, sql } from "kysely";
+import { Pool } from "pg";
 import type { NodeFileMeta, UserPreferences } from "./bknd-types";
 import { getDB, getStorage } from "./src/config-creator";
 import { convertVideoPlugin } from "./src/plugins/bknd/convert-video";
@@ -102,13 +102,19 @@ const isDev = process.env.NODE_ENV !== "production";
 
 export default {
   connection: isDev
-    ? nodeSqlite({
-        url: "file:dev.db",
-        onCreateConnection: (db) => {
-          db.exec("PRAGMA journal_mode = WAL;");
-        },
+    ? pg({
+        pool: new Pool({
+          connectionString:
+            "postgres://nixiedb:5134b0c2454cc6e64b714815588e163f@localhost/nixiedb",
+        }),
       })
-    : getDB(),
+    : // nodeSqlite({
+      //   url: "file:dev.db",
+      //   onCreateConnection: (db) => {
+      //     db.exec("PRAGMA journal_mode = WAL;");
+      //   },
+      // })
+      getDB(),
 
   options: {
     seed: async (ctx) => {
@@ -289,23 +295,20 @@ async function deleteNodes(api: Api, id: string, type: "FILE" | "FOLDER") {
 }
 
 function sumJsonField(columnName: string, jsonPath: string) {
-  return (db: Kysely<DB>) => {
-    const dialect = db.getExecutor().adapter.constructor.name;
-    const parts = jsonPath.split(".");
+  const parts = jsonPath.split(".");
 
-    if (dialect.toLowerCase().includes("postgres")) {
-      let pathSql = columnName;
-      for (let i = 0; i < parts.length; i++) {
-        const isLast = i === parts.length - 1;
-        pathSql += `${isLast ? "->>" : "->"}'${parts[i]}'`;
-      }
-      return sql<number>`coalesce(sum((${sql.raw(pathSql)})::numeric), 0)`;
+  if (process.env.DB_TYPE === "postgres") {
+    let pathSql = `(${columnName})::jsonb`;
+    for (let i = 0; i < parts.length; i++) {
+      const isLast = i === parts.length - 1;
+      pathSql += `${isLast ? "->>" : "->"}'${parts[i]}'`;
     }
+    return sql<number>`coalesce(sum((${sql.raw(pathSql)})::numeric), 0)`;
+  }
 
-    // MySQL / SQLite
-    const formattedPath = `$.${parts.join(".")}`;
-    return sql<number>`coalesce(sum(json_extract(${sql.ref(columnName)}, ${sql.val(formattedPath)})), 0)`;
-  };
+  // MySQL / SQLite
+  const formattedPath = `$.${parts.join(".")}`;
+  return sql<number>`coalesce(sum(json_extract(${sql.ref(columnName)}, ${sql.val(formattedPath)})), 0)`;
 }
 
 async function getBreadcrumbs(db: Kysely<DB>, currentFolderId: string) {
@@ -344,7 +347,7 @@ async function getStoaredDataSize(db: Kysely<DB>, userId: string) {
     .selectFrom("nodes")
     .where("type", "=", "FILE")
     .where("users_id", "=", userId)
-    .select(() => [sumJsonField("metadata", "size")(db).as("total_size")])
+    .select(() => [sumJsonField("metadata", "size").as("total_size")])
     .executeTakeFirst();
   return result;
 }
