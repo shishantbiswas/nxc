@@ -36,9 +36,9 @@ import useSWR from "swr";
 import { useSnapshot } from "valtio/react";
 import { Drawer } from "vaul";
 import { z } from "zod";
-import de from "zod/v4/locales/de.cjs";
 import type { Nodes } from "../../bknd-types";
 import { CreateModal } from "../components/create-modal";
+import Loading from "../components/loading";
 import { PreviewFile } from "../components/preview";
 import { Sidebar } from "../components/sidebar";
 import { useTheme } from "../components/theme-provider";
@@ -46,7 +46,6 @@ import { UploadIndicator } from "../components/upload-progress-badge";
 import { api } from "../lib/bknd";
 import { getFilePreviewByMimeType } from "../lib/get-file-preview-by-mime-type";
 import { type ModalType, modalStore } from "../store/modal";
-import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 import { truncateText } from "../utils/truncate-text";
 
@@ -57,6 +56,8 @@ export const Route = createFileRoute("/_app")({
     folderId: z.string().optional(),
     create: z.enum(["FOLDER", "FILE"]).optional(),
   }),
+  pendingMs: 0,
+  pendingComponent: () => <Loading className="h-[100vh]" />,
   beforeLoad: async ({ search }) => {
     const folderId = search.folderId;
     const user = await api.auth.me();
@@ -289,6 +290,7 @@ function FileOpsModal() {
     </dialog>
   );
 }
+
 function SearchModal() {
   const { type } = useSnapshot(modalStore);
   const [q, setQ] = useState<null | string>(null);
@@ -493,6 +495,7 @@ function MobileDrawer({
     </Drawer.Root>
   );
 }
+
 function DockLink({
   name,
   Icon,
@@ -522,6 +525,7 @@ function DockLink({
     </li>
   );
 }
+
 function MobileDock() {
   const localtion = useLocation();
   const [isOpen, setIsOpen] = useState(false);

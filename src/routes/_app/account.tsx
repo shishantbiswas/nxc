@@ -97,14 +97,14 @@ function Appearance({ user }: { user: SafeUser }) {
             // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
             <img
               key={num}
-              src={`/wallpaper/${num + 1}.jpg`}
+              src={`/wallpaper/${num + 1}.webp`}
               alt="wallpapers"
               className="size-28 object-cover rounded cursor-pointer"
               onClick={async () => {
                 await api.data.updateOne("users", user.id, {
                   preferences: {
                     ...user.preferences,
-                    wallpaper: `/wallpaper/${num + 1}.jpg`,
+                    wallpaper: `/wallpaper/${num + 1}.webp`,
                   },
                 });
                 router.invalidate();

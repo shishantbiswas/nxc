@@ -7,6 +7,8 @@ import { audioMimeType } from "../../utils/mime";
 
 export const Route = createFileRoute("/_app/music")({
   component: RouteComponent,
+  pendingMs: 0,
+  pendingComponent: () => <p>Layout Loading......</p>,
   loader: async ({ context }) => {
     const entries = await api.data.readMany("nodes", {
       with: ["media"],

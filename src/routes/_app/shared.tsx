@@ -4,6 +4,8 @@ import { getFileIconByMimeType } from "../../lib/get-file-icon-by-mime-type";
 
 export const Route = createFileRoute("/_app/shared")({
   component: RouteComponent,
+  pendingMs: 0,
+  pendingComponent: () => <p>Layout Loading......</p>,
   loaderDeps: ({ search }) => search,
   loader: async ({ context }) => {
     const user = context.user;

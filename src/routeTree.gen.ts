@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAccountRouteImport } from './routes/_app/account'
+import { Route as AppEditorRouteImport } from './routes/_app/editor'
 import { Route as AppImagesRouteImport } from './routes/_app/images'
 import { Route as AppMusicRouteImport } from './routes/_app/music'
 import { Route as AppRecentRouteImport } from './routes/_app/recent'
@@ -33,6 +34,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppAccountRoute = AppAccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEditorRoute = AppEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
   getParentRoute: () => AppRoute,
 } as any)
 const AppImagesRoute = AppImagesRouteImport.update({
@@ -79,6 +85,7 @@ const AdminSplatRoute = AdminSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/account': typeof AppAccountRoute
+  '/editor': typeof AppEditorRoute
   '/images': typeof AppImagesRoute
   '/music': typeof AppMusicRoute
   '/recent': typeof AppRecentRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/account': typeof AppAccountRoute
+  '/editor': typeof AppEditorRoute
   '/images': typeof AppImagesRoute
   '/music': typeof AppMusicRoute
   '/recent': typeof AppRecentRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/_app/account': typeof AppAccountRoute
+  '/_app/editor': typeof AppEditorRoute
   '/_app/images': typeof AppImagesRoute
   '/_app/music': typeof AppMusicRoute
   '/_app/recent': typeof AppRecentRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/editor'
     | '/images'
     | '/music'
     | '/recent'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/account'
+    | '/editor'
     | '/images'
     | '/music'
     | '/recent'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/_app/account'
+    | '/_app/editor'
     | '/_app/images'
     | '/_app/music'
     | '/_app/recent'
@@ -180,6 +192,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AppAccountRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/editor': {
+      id: '/_app/editor'
+      path: '/editor'
+      fullPath: '/editor'
+      preLoaderRoute: typeof AppEditorRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/images': {
@@ -243,6 +262,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
+  AppEditorRoute: typeof AppEditorRoute
   AppImagesRoute: typeof AppImagesRoute
   AppMusicRoute: typeof AppMusicRoute
   AppRecentRoute: typeof AppRecentRoute
@@ -255,6 +275,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
+  AppEditorRoute: AppEditorRoute,
   AppImagesRoute: AppImagesRoute,
   AppMusicRoute: AppMusicRoute,
   AppRecentRoute: AppRecentRoute,

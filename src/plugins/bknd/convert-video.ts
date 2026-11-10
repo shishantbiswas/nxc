@@ -146,8 +146,8 @@ export const convertVideoPlugin: AppPlugin = (app) => ({
           //       : "video convertion failed",
           // });
         } finally {
-          await unlink(tempFilePath);
-          await unlink(tempFileOutputPath);
+          // await unlink(tempFilePath);
+          // await unlink(tempFileOutputPath);
         }
       });
     });
@@ -156,7 +156,7 @@ export const convertVideoPlugin: AppPlugin = (app) => ({
 
 const execAsync = promisify(exec);
 
-async function getVideoDuration(filePath: string): Promise<number> {
+export async function getVideoDuration(filePath: string): Promise<number> {
   const { stdout } = await execAsync(
     `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`,
   );
@@ -185,6 +185,7 @@ async function convertVideo(
   resolution: string,
   onProgressUpdate?: (stats: FFmpegProgressStats) => Promise<void>,
 ): Promise<void> {
+  let errorOutput = "";
   const duration = await getVideoDuration(inputPath);
   const durationMs = duration * 1000000; // FFmpeg outputs time in microseconds
 
@@ -209,6 +210,8 @@ async function convertVideo(
     const currentStats: Partial<FFmpegProgressStats> = {};
 
     ffmpeg.stderr.on("data", (data: Buffer) => {
+      errorOutput += data.toString();
+
       const lines = data.toString().split("\n");
 
       for (const line of lines) {
@@ -284,7 +287,11 @@ async function convertVideo(
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`FFmpeg process exited with code ${code}`));
+        reject(
+          new Error(
+            `FFmpeg exited with code ${code}. Details:\n${errorOutput}`,
+          ),
+        );
       }
     });
 

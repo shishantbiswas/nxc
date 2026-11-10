@@ -45,7 +45,7 @@ const schema = em(
         preferences: json({
           default_value: {
             hideDotfiles: true,
-            wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
+            wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.webp`,
             generateImagePreviews: false,
             generateVideoPreviews: false,
           } as UserPreferences,
@@ -102,18 +102,20 @@ const isDev = process.env.NODE_ENV !== "production";
 
 export default {
   connection: isDev
-    ? pg({
-        pool: new Pool({
-          connectionString:
-            "postgres://nixiedb:5134b0c2454cc6e64b714815588e163f@localhost/nixiedb",
-        }),
-      })
-    : // nodeSqlite({
-      //   url: "file:dev.db",
-      //   onCreateConnection: (db) => {
-      //     db.exec("PRAGMA journal_mode = WAL;");
-      //   },
-      // })
+    ?
+    //  pg({
+    //     pool: new Pool({
+    //       connectionString:
+    //         "postgres://nixiedb:5134b0c2454cc6e64b714815588e163f@localhost/nixiedb",
+    //     }),
+    //   })
+    nodeSqlite({
+       url: "file:dev.db",
+       onCreateConnection: (db) => {
+         db.exec("PRAGMA journal_mode = WAL;");
+       },
+     })
+    :
       getDB(),
 
   options: {
@@ -125,7 +127,7 @@ export default {
         role: "ADMIN",
         preferences: {
           hideDotfiles: true,
-          wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.jpg`,
+          wallpaper: `/wallpaper/${Math.floor(Math.random() * 6) + 1}.webp`,
           generateImagePreviews: process.env.GENERATE_IMAGE_PREVIEWS ?? false,
           generateVideoPreviews: process.env.GENERATE_VIDEO_PREVIEWS ?? false,
         } as UserPreferences,

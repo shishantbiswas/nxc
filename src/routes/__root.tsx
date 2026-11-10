@@ -14,10 +14,11 @@ const RootLayout = () => (
   </ClientProvider>
 );
 
-export const Route = createRootRoute({ component: () => (
+export const Route = createRootRoute({
+  component: () => (
     <>
       <HeadContent />
       <RootLayout />
     </>
   ),
- });
+});

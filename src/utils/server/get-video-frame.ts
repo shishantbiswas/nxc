@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { getVideoDuration } from "../../plugins/bknd/convert-video";
 // import { unlink, writeFile } from "node:fs/promises";
 // import { tmpdir } from "node:os";
 // import path from "node:path";
@@ -71,26 +72,31 @@ export async function captureFrameFromTimestampFromLocalFile(
   timestampInSeconds: number,
   { targetHeight = 360, quality = 0.85 } = {},
 ): Promise<File> {
+  const duration = await getVideoDuration(tempFilePath);
+  const safeTimestamp = Math.min(timestampInSeconds, Math.max(0, duration - 0.1));
 
-    const args = [
-      "-ss",
-      timestampInSeconds.toString(),
-      "-i",
-      tempFilePath,
-      "-vframes",
-      "1",
-      "-vf",
-      `scale=-1:${targetHeight}`,
-      "-q:v",
-      Math.max(1, Math.min(31, Math.round((1 - quality) * 31))).toString(),
-      "-f",
-      "image2pipe",
-      "-vcodec",
-      "mjpeg",
-      "pipe:1",
-    ];
+  const args = [
+    "-ss",
+    safeTimestamp.toString(),
+    "-i",
+    tempFilePath,
+    "-vframes",
+    "1",
+    "-vf",
+    `scale=-2:${targetHeight}`,
+    "-q:v",
+    Math.max(1, Math.min(31, Math.round((1 - quality) * 31))).toString(),
+    "-strict",
+    "unofficial",
+    "-f",
+    "image2pipe",
+    "-vcodec",
+    "mjpeg",
+    "pipe:1",
+  ];
 
-    const finalBuffer = await new Promise<Buffer<ArrayBuffer>>((resolve, reject) => {
+  const finalBuffer = await new Promise<Buffer<ArrayBuffer>>(
+    (resolve, reject) => {
       const child = spawn("ffmpeg", args);
       const chunks: Buffer[] = [];
       let stderrData = "";
@@ -106,12 +112,12 @@ export async function captureFrameFromTimestampFromLocalFile(
         }
         resolve(Buffer.concat(chunks));
       });
-    });
+    },
+  );
 
-    if (finalBuffer.length === 0) {
-      throw new Error("No image buffer captured from video processing.");
-    }
+  if (finalBuffer.length === 0) {
+    throw new Error("No image buffer captured from video processing.");
+  }
 
-    return new File([finalBuffer], `${baseName}.jpg`, { type: "image/jpeg" });
- 
+  return new File([finalBuffer], `${baseName}.jpg`, { type: "image/jpeg" });
 }
