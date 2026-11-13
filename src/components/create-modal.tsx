@@ -17,7 +17,6 @@ import { modalStore } from "../store/modal";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 import { buildFolderTree, createDirectories } from "../utils/directory";
-import { createFolder } from "../utils/folder";
 import bytesToSize from "../utils/format-bytes";
 import { truncateText } from "../utils/truncate-text";
 import { useToast } from "./toast-provider";
@@ -61,7 +60,7 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
   const navigate = useNavigate();
   const router = useRouter();
   const toast = useToast();
-  const { user } = useRouteContext({ from: "/_app" });
+  // const { user } = useRouteContext({ from: "/_app" });
   const form = useForm({
     resolver: zodResolver(uploadSchema),
   });
@@ -81,67 +80,67 @@ export function CreateForm({ type }: { type: typeof modalStore.type }) {
       .request("screen")
       .catch(console.error);
 
-    if (!user) {
-      toast.error("User is required");
-      return;
-    }
+    // if (!user) {
+    //   toast.error("User is required");
+    //   return;
+    // }
     const folderId = sp.folderId ?? undefined;
 
     if (form.create === "FOLDER") {
       if (form.data.withFiles) {
         const files = form.data.files;
         const dirs = buildFolderTree(files);
-        const { error, exists } = await createDirectories({
-          root: dirs,
-          folderId,
-          createFn: async (name, files, folderId) => {
-            const createdFolder = await createFolder({
-              userId: user.id as string,
-              folderId,
-              folderName: name,
-            });
-            uploadStore.startUpload({
-              files,
-              folderId: createdFolder.folderId,
-              onFinish: async () => {
-                if (wakeLock) {
-                  await wakeLock.release();
-                }
-              },
-            });
-            return createdFolder;
-          },
-        });
-        if (error > 0) {
-          toast.error("Error creating folders");
-          return;
-        }
-        if (exists > 0) {
-          toast.warning("Folder already exists");
-          return;
-        }
+        // const { error, exists } = await createDirectories({
+        //   root: dirs,
+        //   folderId,
+        //   createFn: async (name, files, folderId) => {
+        //     const createdFolder = await createFolder({
+        //       userId: user.id as string,
+        //       folderId,
+        //       folderName: name,
+        //     });
+        //     uploadStore.startUpload({
+        //       files,
+        //       folderId: createdFolder.folderId,
+        //       onFinish: async () => {
+        //         if (wakeLock) {
+        //           await wakeLock.release();
+        //         }
+        //       },
+        //     });
+        //     return createdFolder;
+        //   },
+        // });
+        // if (error > 0) {
+        //   toast.error("Error creating folders");
+        //   return;
+        // }
+        // if (exists > 0) {
+        //   toast.warning("Folder already exists");
+        //   return;
+        // }
         toast.success("Created folders");
 
         toast.info("Added files to upload queue");
         modalStore.setType(null);
       } else {
         const folderName = form.data.folderName;
-        const folder = await createFolder({
-          folderId: folderId ?? undefined,
-          folderName,
-          userId: String(user.id),
-        });
+        // const folder = await createFolder({
+        //   folderId: folderId ?? undefined,
+        //   folderName,
+        //   userId: String(user.id),
+        // });
 
-        toast[folder.type](folder.message, {
-          duration: 3500,
-        });
+        // toast[folder.type](folder.message, {
+        //   duration: 3500,
+        // });
 
         navigate({
           to: ".",
-          search: (pre) => ({
-            ...pre,
-            folderId: folder.folderId ?? undefined,
-          }),
+          // search: (pre) => ({
+          //   ...pre,
+          //   folderId: folder.folderId ?? undefined,
+          // }),
         });
         modalStore.setType(null);
       }

@@ -36,19 +36,32 @@ import useSWR from "swr";
 import { useSnapshot } from "valtio/react";
 import { Drawer } from "vaul";
 import { z } from "zod";
+import { AppSidebar } from "@/components/ui/app-sidebar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { authClient } from "@/lib/auth-client";
 import type { Nodes } from "../../bknd-types";
 import { CreateModal } from "../components/create-modal";
 import Loading from "../components/loading";
 import { PreviewFile } from "../components/preview";
-import { Sidebar } from "../components/sidebar";
 import { useTheme } from "../components/theme-provider";
 import { UploadIndicator } from "../components/upload-progress-badge";
-import { api } from "../lib/bknd";
 import { getFilePreviewByMimeType } from "../lib/get-file-preview-by-mime-type";
 import { type ModalType, modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import { truncateText } from "../utils/truncate-text";
-
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
   validateSearch: z.object({
@@ -57,13 +70,13 @@ export const Route = createFileRoute("/_app")({
     create: z.enum(["FOLDER", "FILE"]).optional(),
   }),
   pendingMs: 0,
-  pendingComponent: () => <Loading className="h-[100vh]" />,
+  pendingComponent: () => <Loading className="h-screen" />,
   beforeLoad: async ({ search }) => {
     const folderId = search.folderId;
-    const user = await api.auth.me();
+    const user = await authClient.getSession();
 
-    if (!user.user?.email) {
-      throw redirect({ to: "/admin/auth/login" as string });
+    if (!user.data?.user) {
+      throw redirect({ to: "/auth/$path", params: { path: "sign-in" } });
     }
 
     let breadcrumbs: { id: string; name: string }[] = [];
@@ -78,17 +91,17 @@ export const Route = createFileRoute("/_app")({
     }
 
     return {
-      user: user.user,
+      user: user.data.user,
       breadcrumbs,
     };
   },
   head: ({ match }) => {
-    const customIcon = match.context.user.preferences?.favicon;
+    // const customIcon = match.context.user.preferences?.favicon;
     return {
       links: [
         {
           rel: "icon",
-          href: customIcon ?? "/favicon.svg",
+          href: "/favicon.svg",
         },
       ],
     };
@@ -97,37 +110,54 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const [sidebar] = useLocalStorage("sidebar", true);
-  const { user } = Route.useRouteContext();
+  // const { user } = Route.useRouteContext();
   return (
-    <div className="min-w-screen min-h-screen">
+    <div>
       <img
         className="-z-50 absolute w-screen h-screen object-cover"
-        src={user.preferences?.wallpaper ?? "/wallpaper/1.jpg"}
+        src={ "/wallpaper/1.webp"}
         alt=""
       />
-      <main className="h-screen md:p-4 z-50">
-        <div className=" md:h-[calc(100vh-2rem)]! flex bg-base-100/60 backdrop-blur-xl md:rounded-xl overflow-hidden">
-          <Sidebar />
-          <section className="w-full h-screen relative">
-            <Topbar />
-            <div
-              className={cn(
-                "p-2 md:p-4 overflow-auto scrollbar-none md:h-[calc(100vh-9rem)] h-[calc(100vh-5.8rem)]",
-                sidebar
-                  ? "md:w-[calc(100vw-18rem)]"
-                  : "md:w-[calc(100vw-6.5rem)]",
-              )}
-            >
-              <Outlet />
+      <SidebarProvider className="bg-transparent! md:p-2 ">
+        <AppSidebar className="p-2 pr-0 " collapsible="icon"/>
+        <SidebarInset  className="backdrop-blur-sm bg-white/80 m-0! rounded-none!">
+          <header className="flex h-16 shrink-0 items-center gap-2">
+            <div className="flex items-center gap-2 px-4">
+              <SidebarTrigger className="-ml-1" />
+              <Separator
+                orientation="vertical"
+                className="mr-2 h-6 mt-1"
+              />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem className="hidden md:block">
+                    <BreadcrumbLink href="#">
+                      Build Your Application
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
             </div>
-          </section>
-        </div>
-      </main>
-      <MobileDock />
+          </header>
+          <main className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+              <div className="aspect-video rounded-xl bg-muted/50" />
+              <div className="aspect-video rounded-xl bg-muted/50" />
+              <div className="aspect-video rounded-xl bg-muted/50" />
+            </div>
+            <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+      {/* <MobileDock />
       <PreviewFile />
       <CreateModal />
       <SearchModal />
-      <FileOpsModal />
+      <FileOpsModal /> */}
     </div>
   );
 }

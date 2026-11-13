@@ -14,7 +14,7 @@ const ssrBuildConfig: BuildEnvironmentOptions = {
   minify: true,
   emptyOutDir: true,
   rolldownOptions: {
-    input: path.resolve(import.meta.dirname, "src/server.ts"),
+    input: path.resolve(import.meta.dirname, "src/server/index.ts"),
     external: ["sharp", "pg", "@libsql/client"],
     output: {
       entryFileNames: "[name].js",
@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
       }),
       devServer({
         env,
-        entry: "src/server.ts",
+        entry: "src/server/index.ts",
         exclude: [
           /.*\.tsx?($|\?)/,
           /^(?!.*\/__admin).*\.(s?css|less)($|\?)/,

@@ -10,43 +10,42 @@ import remarkGemoji from "remark-gemoji";
 import remarkGfm from "remark-gfm";
 import useSWR from "swr";
 import type { NodeFileVideo, Nodes } from "../../bknd-types";
-import { api } from "../lib/bknd";
 import { uploadStore } from "../store/upload";
 import { cn } from "../utils/cn";
 
 export function PreviewFile() {
   const { fileId } = useSearch({ strict: false });
 
-  const { data, isLoading, error, isValidating } = useSWR(
-    fileId,
-    async (fileId: string) => {
-      const mediaInfo = fileId
-        ? await api.data.readOneBy("media", {
-            where: {
-              id: fileId,
-            },
-          })
-        : null;
+  // const { data, isLoading, error, isValidating } = useSWR(
+  //   fileId,
+  //   async (fileId: string) => {
+  //     const mediaInfo = fileId
+  //       ? await api.data.readOneBy("media", {
+  //           where: {
+  //             id: fileId,
+  //           },
+  //         })
+  //       : null;
 
-      const mediaNodeInfo = fileId
-        ? await api.data.readOneBy("nodes", {
-            where: {
-              media_id: mediaInfo?.data.id,
-            },
-          })
-        : null;
+  //     const mediaNodeInfo = fileId
+  //       ? await api.data.readOneBy("nodes", {
+  //           where: {
+  //             media_id: mediaInfo?.data.id,
+  //           },
+  //         })
+  //       : null;
 
-      return {
-        mediaInfo: mediaInfo?.data ?? null,
-        mediaNodeInfo: mediaNodeInfo?.data ?? null,
-      };
-    },
-  );
+  //     return {
+  //       mediaInfo: mediaInfo?.data ?? null,
+  //       mediaNodeInfo: mediaNodeInfo?.data ?? null,
+  //     };
+  //   },
+  // );
   const navigate = useNavigate();
 
-  if (isLoading || isValidating) return <p>Loading ...</p>;
-  if (error) return <p>Error ...</p>;
-  if (!fileId || !data?.mediaNodeInfo || !data?.mediaInfo) return;
+  // if (isLoading || isValidating) return <p>Loading ...</p>;
+  // if (error) return <p>Error ...</p>;
+  // if (!fileId || !data?.mediaNodeInfo || !data?.mediaInfo) return;
 
   return (
     <div className={cn("modal", fileId && "modal-open")}>
@@ -59,37 +58,37 @@ export function PreviewFile() {
           if (e.key === "Escape") {
             navigate({
               to: ".",
-              search: (pre) => ({ ...pre, fileId: undefined }),
+              // search: (pre) => ({ ...pre, fileId: undefined }),
             });
           }
         }}
       >
-        <FileEntryByType
+        {/* <FileEntryByType
           node={data?.mediaNodeInfo}
           mime_type={data?.mediaNodeInfo?.mime_type}
           fileUrl={`/api/media/file/${data?.mediaInfo?.path}`}
-        />
+        /> */}
       </div>
       <div className="modal-backdrop flex flex-col">
         <div
           className={cn(
             "h-12 bg-neutral/50 flex items-center justify-between px-2",
-            !data?.mediaInfo && "hidden",
+            // !data?.mediaInfo && "hidden",
           )}
         >
-          <ActionBar
+          {/* <ActionBar
             mime_type={data?.mediaNodeInfo?.mime_type}
             videoResolution={
               (data.mediaNodeInfo.metadata as NodeFileVideo).height
             }
             id={data.mediaNodeInfo.id as string}
             name={data.mediaNodeInfo.name as string}
-          />
+          /> */}
           <div>
             <Link
               to="."
               className="min-h-[calc(100%-3rem)]"
-              search={(pre) => ({ ...pre, fileId: undefined })}
+              // search={(pre) => ({ ...pre, fileId: undefined })}
             >
               <button
                 type="button"
@@ -103,7 +102,7 @@ export function PreviewFile() {
         <Link
           to="."
           className="min-h-[calc(100%-3rem)]"
-          search={(pre) => ({ ...pre, fileId: undefined })}
+          // search={(pre) => ({ ...pre, fileId: undefined })}
         ></Link>
       </div>
     </div>

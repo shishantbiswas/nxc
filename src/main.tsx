@@ -4,10 +4,16 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 
 import { routeTree } from "./routeTree.gen";
+import { trpc } from "./trpc";
 
 export const router = createRouter({
   routeTree,
+  scrollRestoration: true,
+  defaultPreload: "intent",
   trailingSlash: "never",
+  context: {
+    trpc,
+  },
 });
 
 declare module "@tanstack/react-router" {

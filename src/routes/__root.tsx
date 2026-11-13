@@ -1,24 +1,42 @@
-import { createRootRoute, HeadContent, Outlet } from "@tanstack/react-router";
-import { ClientProvider } from "bknd/client";
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+} from "@tanstack/react-router";
+import { AuthUiProvider } from "@/components/auth-provider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/toast-provider";
+import type { trpc } from "../trpc";
 
-const RootLayout = () => (
-  <ClientProvider>
-    <ThemeProvider>
-      <ToastProvider>
-        <title>Home</title>
-        <Outlet />
-      </ToastProvider>
-    </ThemeProvider>
-  </ClientProvider>
-);
+export interface RouterAppContext {
+  trpc: typeof trpc;
+}
 
-export const Route = createRootRoute({
-  component: () => (
+function RootComponent() {
+  return (
     <>
       <HeadContent />
-      <RootLayout />
+      <ThemeProvider>
+        <AuthUiProvider>
+          <ToastProvider>
+            <TooltipProvider>
+              <Outlet />
+            </TooltipProvider>
+          </ToastProvider>
+        </AuthUiProvider>
+      </ThemeProvider>
     </>
-  ),
+  );
+}
+
+export const Route = createRootRouteWithContext<RouterAppContext>()({
+  component: RootComponent,
+  head: () => ({
+    meta: [
+      {
+        title: "Home",
+      },
+    ],
+  }),
 });

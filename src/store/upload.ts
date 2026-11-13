@@ -3,13 +3,10 @@ import { toast } from "react-hot-toast";
 import { proxy } from "valtio";
 import type { Nodes } from "../../bknd-types";
 import { IMAGE_PREVIEW_SIZE } from "../constants";
-import { api } from "../lib/bknd";
-import { fileExistsByName } from "../utils/file";
 import { getImageThumbnail } from "../utils/get-image-thumbnail";
 import { captureFrameFromTimestamp } from "../utils/get-video-frame";
 import { getImageDimensions, getVideoDimensions } from "../utils/metadata";
 import { getMimeTypeByExtension } from "../utils/mime";
-import { uploadFileToBkndWithProgress } from "../utils/upload-with-progress";
 
 export type FileWithId = {
   id: string;
@@ -146,13 +143,13 @@ export const uploadStore = proxy<{
     const newTasks: Record<string, FileTask> = {};
     const taskIds: string[] = [];
 
-    await api.verifyAuth();
-    const user = api.getUser();
+    // await api.verifyAuth();
+    // const user = api.getUser();
 
-    if (!user) {
-      toast.error("Unauthorized");
-      return;
-    }
+    // if (!user) {
+    //   toast.error("Unauthorized");
+    //   return;
+    // }
 
     files.forEach((data) => {
       const file = data.fileData;
@@ -175,12 +172,12 @@ export const uploadStore = proxy<{
     for (let i = 0; i < files.length; i++) {
       const id = taskIds[i];
       const file = files[i].fileData;
-      const fileExists = await fileExistsByName(file.name, folderId);
-      if (fileExists) {
-        uploadStore.tasks[id].status = "error";
-        uploadStore.tasks[id].error = "File already exists in that folder";
-        continue;
-      }
+      // const fileExists = await fileExistsByName(file.name, folderId);
+      // if (fileExists) {
+      //   uploadStore.tasks[id].status = "error";
+      //   uploadStore.tasks[id].error = "File already exists in that folder";
+      //   continue;
+      // }
       const ext =
         file.name.lastIndexOf(".") !== -1
           ? file.name.slice(file.name.lastIndexOf("."))
@@ -193,93 +190,93 @@ export const uploadStore = proxy<{
       uploadStore.tasks[id].status = "uploading";
       const metaUrl = URL.createObjectURL(file);
 
-      try {
-        const { data } = await uploadFileToBkndWithProgress({
-          file,
-          options: {
-            filename,
-            onProgress: ({ percentage }) => {
-              uploadStore.tasks[id].progress.percentage = percentage;
-            },
-          },
-        });
-        if (uploadStore.tasks[id]) {
-          uploadStore.tasks[id].status = "completed";
-        }
-        const mime = getMimeTypeByExtension(file.name);
-        const meta: any = {};
+      // try {
+      //   const { data } = await uploadFileToBkndWithProgress({
+      //     file,
+      //     options: {
+      //       filename,
+      //       onProgress: ({ percentage }) => {
+      //         uploadStore.tasks[id].progress.percentage = percentage;
+      //       },
+      //     },
+      //   });
+      //   if (uploadStore.tasks[id]) {
+      //     uploadStore.tasks[id].status = "completed";
+      //   }
+      //   const mime = getMimeTypeByExtension(file.name);
+      //   const meta: any = {};
 
-        if (mime?.startsWith("video/")) {
-          meta.fileType = "video";
-          const video = await getVideoDimensions(metaUrl);
-          meta.width = video.width;
-          meta.height = video.height;
-          meta.duration = video.duration;
-          if (user.preferences?.generateVideoPreviews) {
-            const thumbnail = await captureFrameFromTimestamp(
-              metaUrl,
-              file.name,
-              20,
-            ).catch(() => undefined);
-            if (thumbnail) {
-              const filename = `preview_${nanoid()}${ext}`;
-              await api.media.upload(thumbnail, {
-                filename,
-              });
-              meta.preview = filename;
-            }
-          }
-        }
+      //   if (mime?.startsWith("video/")) {
+      //     meta.fileType = "video";
+      //     const video = await getVideoDimensions(metaUrl);
+      //     meta.width = video.width;
+      //     meta.height = video.height;
+      //     meta.duration = video.duration;
+      //     if (user.preferences?.generateVideoPreviews) {
+      //       const thumbnail = await captureFrameFromTimestamp(
+      //         metaUrl,
+      //         file.name,
+      //         20,
+      //       ).catch(() => undefined);
+      //       if (thumbnail) {
+      //         const filename = `preview_${nanoid()}${ext}`;
+      //         await api.media.upload(thumbnail, {
+      //           filename,
+      //         });
+      //         meta.preview = filename;
+      //       }
+      //     }
+      //   }
 
-        if (mime?.startsWith("image/")) {
-          meta.fileType = "image";
-          const image = await getImageDimensions(metaUrl);
-          meta.width = image.width;
-          meta.height = image.height;
-          if (
-            user.preferences?.generateImagePreviews &&
-            file.size > IMAGE_PREVIEW_SIZE
-          ) {
-            const thumbnail = await getImageThumbnail(metaUrl, file.name).catch(
-              () => undefined,
-            );
-            if (thumbnail) {
-              const filename = `preview_${nanoid()}${ext}`;
-              await api.media.upload(thumbnail, {
-                filename,
-              });
-              meta.preview = filename;
-            }
-          }
-        }
+      //   if (mime?.startsWith("image/")) {
+      //     meta.fileType = "image";
+      //     const image = await getImageDimensions(metaUrl);
+      //     meta.width = image.width;
+      //     meta.height = image.height;
+      //     if (
+      //       user.preferences?.generateImagePreviews &&
+      //       file.size > IMAGE_PREVIEW_SIZE
+      //     ) {
+      //       const thumbnail = await getImageThumbnail(metaUrl, file.name).catch(
+      //         () => undefined,
+      //       );
+      //       if (thumbnail) {
+      //         const filename = `preview_${nanoid()}${ext}`;
+      //         await api.media.upload(thumbnail, {
+      //           filename,
+      //         });
+      //         meta.preview = filename;
+      //       }
+      //     }
+      //   }
 
-        const newNode = await api.data.createOne("nodes", {
-          name: file.name,
-          type: "FILE",
-          users_id: user.id as string,
-          media_id: data.id as string,
-          parent_id: folderId ?? undefined,
-          mime_type: mime || "application/octet-stream",
-          metadata: {
-            size: file.size,
-            ...(meta.fileType ? meta : undefined),
-          },
-        });
-        onSucess?.(newNode.data);
-      } catch (error) {
-        console.log({ error });
-        const errMsg =
-          error instanceof Error
-            ? error.message
-            : `Error Uploading ${file.name}`;
-        if (uploadStore.tasks[id]) {
-          uploadStore.tasks[id].status = "error";
-          uploadStore.tasks[id].error = errMsg;
-        }
-        onError?.(errMsg);
-      } finally {
-        URL.revokeObjectURL(metaUrl);
-      }
+      //   const newNode = await api.data.createOne("nodes", {
+      //     name: file.name,
+      //     type: "FILE",
+      //     users_id: user.id as string,
+      //     media_id: data.id as string,
+      //     parent_id: folderId ?? undefined,
+      //     mime_type: mime || "application/octet-stream",
+      //     metadata: {
+      //       size: file.size,
+      //       ...(meta.fileType ? meta : undefined),
+      //     },
+      //   });
+      //   onSucess?.(newNode.data);
+      // } catch (error) {
+      //   console.log({ error });
+      //   const errMsg =
+      //     error instanceof Error
+      //       ? error.message
+      //       : `Error Uploading ${file.name}`;
+      //   if (uploadStore.tasks[id]) {
+      //     uploadStore.tasks[id].status = "error";
+      //     uploadStore.tasks[id].error = errMsg;
+      //   }
+      //   onError?.(errMsg);
+      // } finally {
+      //   URL.revokeObjectURL(metaUrl);
+      // }
     }
     const tasks = Object.values(uploadStore.tasks);
     const completed = tasks.filter((t) => t.status === "completed").length;
@@ -293,13 +290,13 @@ export const uploadStore = proxy<{
   },
 
   async queueUrl({ url, folderId, onSucess, onError, onFinish }) {
-    await api.verifyAuth();
-    const user = api.getUser();
+    // await api.verifyAuth();
+    // const user = api.getUser();
 
-    if (!user) {
-      toast.error("Unauthorized");
-      return;
-    }
+    // if (!user) {
+    //   toast.error("Unauthorized");
+    //   return;
+    // }
 
     const _url = new URL(url);
     const lastPath = _url.pathname.lastIndexOf("/");

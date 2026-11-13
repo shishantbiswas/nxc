@@ -5,7 +5,6 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { useSnapshot } from "valtio/react";
 import type { Nodes } from "../../bknd-types";
-import { api } from "../lib/bknd";
 import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import { NodeDropdown } from "./node-dropdown";
@@ -34,24 +33,24 @@ export function FolderTile({
     }
 
     if (id === folder.id) return;
-    const currentFolderItems = await api.data.readMany("nodes", {
-      where: {
-        parent_id: folder.id,
-      },
-      limit: 1024,
-    });
+    // const currentFolderItems = await api.data.readMany("nodes", {
+    //   where: {
+    //     parent_id: folder.id,
+    //   },
+    //   limit: 1024,
+    // });
 
-    const itemToMoveIn = await api.data.readOne("nodes", id);
-    // console.log({ currentFolderItems, itemToMoveIn });
+    // const itemToMoveIn = await api.data.readOne("nodes", id);
+    // // console.log({ currentFolderItems, itemToMoveIn });
 
-    if (currentFolderItems.data.some((e) => e.name === itemToMoveIn.name)) {
-      toast.error("A file with the same name exists in that folder");
-    } else {
-      await api.data.updateOne("nodes", id, {
-        parent_id: folder.id,
-      });
-      router.invalidate();
-    }
+    // if (currentFolderItems.data.some((e) => e.name === itemToMoveIn.name)) {
+    //   toast.error("A file with the same name exists in that folder");
+    // } else {
+    //   await api.data.updateOne("nodes", id, {
+    //     parent_id: folder.id,
+    //   });
+    //   router.invalidate();
+    // }
   };
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -75,10 +74,10 @@ export function FolderTile({
             setIsDragOver(true);
           }}
           onDragLeave={() => setIsDragOver(false)}
-          search={(pre) => ({
-            ...pre,
-            folderId: folder.id,
-          })}
+          // search={(pre) => ({
+          //   ...pre,
+          //   folderId: folder.id,
+          // })}
           className="flex flex-col h-32! items-center justify-center "
         >
           <Folder className="size-10 shrink-0" />
@@ -123,10 +122,10 @@ export function FolderTile({
     <div className="flex items-center justify-start hover:bg-neutral/20 rounded-lg w-full group ">
       <Link
         to="."
-        search={(pre) => ({
-          ...pre,
-          folderId: folder.id,
-        })}
+        // search={(pre) => ({
+        //   ...pre,
+        //   folderId: folder.id,
+        // })}
         draggable="true"
         onDragStart={handleDragStart}
         onDrop={handleOnDrag}

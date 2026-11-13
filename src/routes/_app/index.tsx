@@ -4,17 +4,14 @@ import {
   useRouteContext,
   useRouter,
 } from "@tanstack/react-router";
-import type { RepoQueryIn } from "bknd";
 import { Empty } from "../../components/empty";
 import { FileTile } from "../../components/file-entry";
 import { FolderTile } from "../../components/folder-tile";
-import { api } from "../../lib/bknd";
 import "github-markdown-css/github-markdown.css";
 import { useLocalStorage } from "@uidotdev/usehooks";
 import { Folder, Grid3X3, TableProperties } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useSnapshot } from "valtio/react";
-import type { Nodes } from "../../../bknd-types";
 import { NodeDropdown } from "../../components/node-dropdown";
 import formatDateOrTime from "../../lib/format-date-time";
 import { getFilePreviewByMimeType } from "../../lib/get-file-preview-by-mime-type";
@@ -31,67 +28,67 @@ export const Route = createFileRoute("/_app/")({
   // }),
   beforeLoad: ({ search }) => search,
   loaderDeps: ({ search }) => search,
-  loader: async ({ context }) => {
-    const user = context.user;
+  // loader: async ({ context }) => {
+  //   const user = context.user;
 
-    const opts: RepoQueryIn["where"] = {
-      users_id: { $eq: user.id },
-      deleted_at: { $isnull: true },
-    };
-    const count: RepoQueryIn["where"] = {
-      ...(context.folderId
-        ? {
-            parent_id: {
-              ...(context.folderId
-                ? { $eq: context.folderId }
-                : { $isnull: true }),
-            },
-          }
-        : undefined),
-    };
-    const folderCount = await api.data.count("nodes", {
-      type: { $eq: "FOLDER" },
-      ...count,
-      ...opts,
-    });
+  //   const opts: RepoQueryIn["where"] = {
+  //     users_id: { $eq: user.id },
+  //     deleted_at: { $isnull: true },
+  //   };
+  //   const count: RepoQueryIn["where"] = {
+  //     ...(context.folderId
+  //       ? {
+  //           parent_id: {
+  //             ...(context.folderId
+  //               ? { $eq: context.folderId }
+  //               : { $isnull: true }),
+  //           },
+  //         }
+  //       : undefined),
+  //   };
+  //   const folderCount = await api.data.count("nodes", {
+  //     type: { $eq: "FOLDER" },
+  //     ...count,
+  //     ...opts,
+  //   });
 
-    const fileCount = await api.data.count("nodes", {
-      type: { $eq: "FILE" },
-      ...count,
-      ...opts,
-    });
+  //   const fileCount = await api.data.count("nodes", {
+  //     type: { $eq: "FILE" },
+  //     ...count,
+  //     ...opts,
+  //   });
 
-    const entries = await api.data.readMany("nodes", {
-      with: ["media", "users"],
-      where: {
-        parent_id: {
-          ...(context.folderId ? { $eq: context.folderId } : { $isnull: true }),
-        },
-        ...opts,
-      },
-      sort:
-        // sorting doesn't work for nested json will wait till bknd adds it
-        // context.sort
-        //   ? {
-        //       by: context.sort,
-        //       dir: context.dir ?? "desc",
-        //     }
-        //   :
-        {
-          by: "type",
-          dir: "desc",
-        },
-      limit: 1024,
-    });
-    sortStore.setNodes(entries, "created_at", "desc");
+  //   const entries = await api.data.readMany("nodes", {
+  //     with: ["media", "users"],
+  //     where: {
+  //       parent_id: {
+  //         ...(context.folderId ? { $eq: context.folderId } : { $isnull: true }),
+  //       },
+  //       ...opts,
+  //     },
+  //     sort:
+  //       // sorting doesn't work for nested json will wait till bknd adds it
+  //       // context.sort
+  //       //   ? {
+  //       //       by: context.sort,
+  //       //       dir: context.dir ?? "desc",
+  //       //     }
+  //       //   :
+  //       {
+  //         by: "type",
+  //         dir: "desc",
+  //       },
+  //     limit: 1024,
+  //   });
+  //   sortStore.setNodes(entries, "created_at", "desc");
 
-    return {
-      entries: entries.data,
-      fileCount: fileCount.data.count,
-      folderCount: folderCount.data.count,
-      isEmpty: entries.length === 0,
-    };
-  },
+  //   return {
+  //     entries: entries.data,
+  //     fileCount: fileCount.data.count,
+  //     folderCount: folderCount.data.count,
+  //     isEmpty: entries.length === 0,
+  //   };
+  // },
   head: () => ({
     meta: [
       {
@@ -102,18 +99,18 @@ export const Route = createFileRoute("/_app/")({
 });
 
 function Index() {
-  const { entries, isEmpty, fileCount, folderCount } = Route.useLoaderData();
+  // const { entries, isEmpty, fileCount, folderCount } = Route.useLoaderData();
   const { folderId } = Route.useSearch();
   const { user, breadcrumbs } = useRouteContext({ from: "/_app" });
   const [grid, setGrid] = useLocalStorage("layout", true);
   const { selectedNodes } = useSnapshot(modalStore);
   const { nodes } = useSnapshot(sortStore);
 
-  if (!Array.isArray(entries) || "error" in entries) {
-    throw new Error(
-      `Fatal Error Occoured ${entries.error ?? "entries is not a array"}`,
-    );
-  }
+  // if (!Array.isArray(entries) || "error" in entries) {
+  //   throw new Error(
+  //     `Fatal Error Occoured ${entries.error ?? "entries is not a array"}`,
+  //   );
+  // }
   const router = useRouter();
 
   return (
@@ -134,27 +131,27 @@ function Index() {
                 type="button"
                 className="btn btn-sm text-sm! btn-error"
                 // onClick={() => modalStore.setType("FILE:DELETE")}
-                onClick={async () => {
-                  await api.data
-                    .updateMany(
-                      "nodes",
-                      {
-                        id: { $in: [...selectedNodes] },
-                      },
-                      { deleted_at: new Date() },
-                    )
-                    .then(() => {
-                      toast(`Trashed ${selectedNodes.length} Files/Folder`);
-                      modalStore.setSelectedNodes([]);
-                      modalStore.setType(null);
-                      router.invalidate();
-                    })
-                    .catch(() => {
-                      toast.error(
-                        `Error deleting ${selectedNodes.length} Files/Folder`,
-                      );
-                    });
-                }}
+                // onClick={async () => {
+                //   await api.data
+                //     .updateMany(
+                //       "nodes",
+                //       {
+                //         id: { $in: [...selectedNodes] },
+                //       },
+                //       { deleted_at: new Date() },
+                //     )
+                //     .then(() => {
+                //       toast(`Trashed ${selectedNodes.length} Files/Folder`);
+                //       modalStore.setSelectedNodes([]);
+                //       modalStore.setType(null);
+                //       router.invalidate();
+                //     })
+                //     .catch(() => {
+                //       toast.error(
+                //         `Error deleting ${selectedNodes.length} Files/Folder`,
+                //       );
+                //     });
+                // }}
               >
                 Delete ({selectedNodes.length})
               </button>
@@ -175,7 +172,7 @@ function Index() {
         </div>
       </div>
 
-      <div className="p-4 ">
+      {/* <div className="p-4 ">
         <h2 className="text-2xl">
           {getTimeBasedGreeting()}, {user.name ?? user.email.split("@")[0]}
         </h2>
@@ -197,7 +194,7 @@ function Index() {
         <NodeGrid nodes={nodes as typeof sortStore.nodes} />
       ) : (
         <NodeTable nodes={nodes as typeof sortStore.nodes} />
-      )}
+      )} */}
     </>
   );
 }

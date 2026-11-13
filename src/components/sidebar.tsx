@@ -14,16 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import useSWRImmutable from "swr/immutable";
-import { useUser } from "../hooks/useUser";
 import { modalStore } from "../store/modal";
 import { cn } from "../utils/cn";
 import bytesToSize from "../utils/format-bytes";
-import { FAB } from "./fab";
 import { MusicPlayer } from "./music-player";
 
 export function Sidebar() {
   const [open, setOpen] = useLocalStorage("sidebar", true);
-  const { user } = useRouteContext({ from: "/_app" });
+  // const { user } = useRouteContext({ from: "/_app" });
 
   return (
     <>
@@ -42,7 +40,7 @@ export function Sidebar() {
             >
               <img
                 alt="Logo"
-                src={user.preferences?.favicon ?? "/favicon.svg"}
+                // src={user.preferences?.favicon ?? "/favicon.svg"}
                 className="size-5"
               />
               <span className="group-data-[expanded=false]:hidden">App</span>
@@ -86,7 +84,7 @@ export function Sidebar() {
         <div className="p-4 flex flex-col gap-4">
           <ul className="space-y-2">
             <li className="group-data-[expanded=false]:w-fit">
-              <StorageUsed />
+              {/* <StorageUsed /> */}
             </li>
             <SidebarLink link="/trash" name="Trash" Icon={Trash} />
           </ul>
@@ -110,7 +108,7 @@ export function Sidebar() {
         </div>
       </aside>
 
-      <FAB />
+      {/* <FAB />               */}
     </>
   );
 }
@@ -151,17 +149,17 @@ function SidebarLink({
 }
 
 function User() {
-  const { isError, isLoading, user } = useUser();
+  // const { isError, isLoading, user } = useUser();
 
-  if (isLoading) return <p>Loading...</p>;
-  if (!user || isError) return null;
+  // if (isLoading) return <p>Loading...</p>;
+  // if (!user || isError) return null;
   return (
     <div className="flex justify-between items-center group-data-[expanded=false]:hidden w-full">
       <Link className="btn w-full" to="/account">
         <div className="flex flex-col text-start w-full">
           <span className="font-bold"></span>
           <span className="text-sm opacity-60">
-            {user?.name ?? user?.email.split("@")[0]}
+            {/* {user?.name ?? user?.email.split("@")[0]} */}
           </span>
         </div>
       </Link>

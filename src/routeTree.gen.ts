@@ -11,16 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
-import { Route as AppAccountRouteImport } from './routes/_app/account'
-import { Route as AppEditorRouteImport } from './routes/_app/editor'
-import { Route as AppImagesRouteImport } from './routes/_app/images'
-import { Route as AppMusicRouteImport } from './routes/_app/music'
-import { Route as AppRecentRouteImport } from './routes/_app/recent'
-import { Route as AppSharedRouteImport } from './routes/_app/shared'
-import { Route as AppTrashRouteImport } from './routes/_app/trash'
-import { Route as AppUploadsRouteImport } from './routes/_app/uploads'
-import { Route as AppVideoRouteImport } from './routes/_app/video'
-import { Route as AdminSplatRouteImport } from './routes/admin.$'
+import { Route as AuthPathRouteImport } from './routes/auth/$path'
+import { Route as AppSettingsPathRouteImport } from './routes/_app/settings/$path'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -31,144 +23,45 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAccountRoute = AppAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppEditorRoute = AppEditorRouteImport.update({
-  id: '/editor',
-  path: '/editor',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppImagesRoute = AppImagesRouteImport.update({
-  id: '/images',
-  path: '/images',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppMusicRoute = AppMusicRouteImport.update({
-  id: '/music',
-  path: '/music',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppRecentRoute = AppRecentRouteImport.update({
-  id: '/recent',
-  path: '/recent',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSharedRoute = AppSharedRouteImport.update({
-  id: '/shared',
-  path: '/shared',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppTrashRoute = AppTrashRouteImport.update({
-  id: '/trash',
-  path: '/trash',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppUploadsRoute = AppUploadsRouteImport.update({
-  id: '/uploads',
-  path: '/uploads',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppVideoRoute = AppVideoRouteImport.update({
-  id: '/video',
-  path: '/video',
-  getParentRoute: () => AppRoute,
-} as any)
-const AdminSplatRoute = AdminSplatRouteImport.update({
-  id: '/admin/$',
-  path: '/admin/$',
+const AuthPathRoute = AuthPathRouteImport.update({
+  id: '/auth/$path',
+  path: '/auth/$path',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSettingsPathRoute = AppSettingsPathRouteImport.update({
+  id: '/settings/$path',
+  path: '/settings/$path',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/account': typeof AppAccountRoute
-  '/editor': typeof AppEditorRoute
-  '/images': typeof AppImagesRoute
-  '/music': typeof AppMusicRoute
-  '/recent': typeof AppRecentRoute
-  '/shared': typeof AppSharedRoute
-  '/trash': typeof AppTrashRoute
-  '/uploads': typeof AppUploadsRoute
-  '/video': typeof AppVideoRoute
-  '/admin/$': typeof AdminSplatRoute
+  '/auth/$path': typeof AuthPathRoute
+  '/settings/$path': typeof AppSettingsPathRoute
 }
 export interface FileRoutesByTo {
-  '/account': typeof AppAccountRoute
-  '/editor': typeof AppEditorRoute
-  '/images': typeof AppImagesRoute
-  '/music': typeof AppMusicRoute
-  '/recent': typeof AppRecentRoute
-  '/shared': typeof AppSharedRoute
-  '/trash': typeof AppTrashRoute
-  '/uploads': typeof AppUploadsRoute
-  '/video': typeof AppVideoRoute
-  '/admin/$': typeof AdminSplatRoute
+  '/auth/$path': typeof AuthPathRoute
   '/': typeof AppIndexRoute
+  '/settings/$path': typeof AppSettingsPathRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/_app/account': typeof AppAccountRoute
-  '/_app/editor': typeof AppEditorRoute
-  '/_app/images': typeof AppImagesRoute
-  '/_app/music': typeof AppMusicRoute
-  '/_app/recent': typeof AppRecentRoute
-  '/_app/shared': typeof AppSharedRoute
-  '/_app/trash': typeof AppTrashRoute
-  '/_app/uploads': typeof AppUploadsRoute
-  '/_app/video': typeof AppVideoRoute
-  '/admin/$': typeof AdminSplatRoute
+  '/auth/$path': typeof AuthPathRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/settings/$path': typeof AppSettingsPathRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/account'
-    | '/editor'
-    | '/images'
-    | '/music'
-    | '/recent'
-    | '/shared'
-    | '/trash'
-    | '/uploads'
-    | '/video'
-    | '/admin/$'
+  fullPaths: '/' | '/auth/$path' | '/settings/$path'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/account'
-    | '/editor'
-    | '/images'
-    | '/music'
-    | '/recent'
-    | '/shared'
-    | '/trash'
-    | '/uploads'
-    | '/video'
-    | '/admin/$'
-    | '/'
-  id:
-    | '__root__'
-    | '/_app'
-    | '/_app/account'
-    | '/_app/editor'
-    | '/_app/images'
-    | '/_app/music'
-    | '/_app/recent'
-    | '/_app/shared'
-    | '/_app/trash'
-    | '/_app/uploads'
-    | '/_app/video'
-    | '/admin/$'
-    | '/_app/'
+  to: '/auth/$path' | '/' | '/settings/$path'
+  id: '__root__' | '/_app' | '/auth/$path' | '/_app/' | '/_app/settings/$path'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
-  AdminSplatRoute: typeof AdminSplatRoute
+  AuthPathRoute: typeof AuthPathRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -187,110 +80,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/account': {
-      id: '/_app/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AppAccountRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/editor': {
-      id: '/_app/editor'
-      path: '/editor'
-      fullPath: '/editor'
-      preLoaderRoute: typeof AppEditorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/images': {
-      id: '/_app/images'
-      path: '/images'
-      fullPath: '/images'
-      preLoaderRoute: typeof AppImagesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/music': {
-      id: '/_app/music'
-      path: '/music'
-      fullPath: '/music'
-      preLoaderRoute: typeof AppMusicRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/recent': {
-      id: '/_app/recent'
-      path: '/recent'
-      fullPath: '/recent'
-      preLoaderRoute: typeof AppRecentRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/shared': {
-      id: '/_app/shared'
-      path: '/shared'
-      fullPath: '/shared'
-      preLoaderRoute: typeof AppSharedRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/trash': {
-      id: '/_app/trash'
-      path: '/trash'
-      fullPath: '/trash'
-      preLoaderRoute: typeof AppTrashRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/uploads': {
-      id: '/_app/uploads'
-      path: '/uploads'
-      fullPath: '/uploads'
-      preLoaderRoute: typeof AppUploadsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/video': {
-      id: '/_app/video'
-      path: '/video'
-      fullPath: '/video'
-      preLoaderRoute: typeof AppVideoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/admin/$': {
-      id: '/admin/$'
-      path: '/admin/$'
-      fullPath: '/admin/$'
-      preLoaderRoute: typeof AdminSplatRouteImport
+    '/auth/$path': {
+      id: '/auth/$path'
+      path: '/auth/$path'
+      fullPath: '/auth/$path'
+      preLoaderRoute: typeof AuthPathRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/settings/$path': {
+      id: '/_app/settings/$path'
+      path: '/settings/$path'
+      fullPath: '/settings/$path'
+      preLoaderRoute: typeof AppSettingsPathRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
 interface AppRouteChildren {
-  AppAccountRoute: typeof AppAccountRoute
-  AppEditorRoute: typeof AppEditorRoute
-  AppImagesRoute: typeof AppImagesRoute
-  AppMusicRoute: typeof AppMusicRoute
-  AppRecentRoute: typeof AppRecentRoute
-  AppSharedRoute: typeof AppSharedRoute
-  AppTrashRoute: typeof AppTrashRoute
-  AppUploadsRoute: typeof AppUploadsRoute
-  AppVideoRoute: typeof AppVideoRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppSettingsPathRoute: typeof AppSettingsPathRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
-  AppAccountRoute: AppAccountRoute,
-  AppEditorRoute: AppEditorRoute,
-  AppImagesRoute: AppImagesRoute,
-  AppMusicRoute: AppMusicRoute,
-  AppRecentRoute: AppRecentRoute,
-  AppSharedRoute: AppSharedRoute,
-  AppTrashRoute: AppTrashRoute,
-  AppUploadsRoute: AppUploadsRoute,
-  AppVideoRoute: AppVideoRoute,
   AppIndexRoute: AppIndexRoute,
+  AppSettingsPathRoute: AppSettingsPathRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  AdminSplatRoute: AdminSplatRoute,
+  AuthPathRoute: AuthPathRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

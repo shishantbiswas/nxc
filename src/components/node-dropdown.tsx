@@ -16,7 +16,6 @@ import { useState } from "react";
 import DatePicker from "react-datepicker";
 import { toast } from "react-hot-toast";
 import type { Nodes } from "../../bknd-types";
-import { api } from "../lib/bknd";
 import { cn } from "../utils/cn";
 
 export function NodeDropdown({
@@ -116,12 +115,12 @@ export function NodeDropdown({
                       if (node.type !== "FILE" || !user?.id) {
                         return;
                       }
-                      await api.data.updateOne("users", user?.id as string, {
-                        preferences: {
-                          ...user?.preferences,
-                          favicon: `/api/media/file/${node.media?.path}`,
-                        },
-                      });
+                      // await api.data.updateOne("users", user?.id as string, {
+                      //   preferences: {
+                      //     ...user?.preferences,
+                      //     favicon: `/api/media/file/${node.media?.path}`,
+                      //   },
+                      // });
                       toast.success("Updated favicon");
                       router.invalidate();
                     }}
@@ -138,12 +137,12 @@ export function NodeDropdown({
                       if (node.type !== "FILE" || !user?.id) {
                         return;
                       }
-                      await api.data.updateOne("users", user?.id as string, {
-                        preferences: {
-                          ...user?.preferences,
-                          wallpaper: `/api/media/file/${node.media?.path}`,
-                        },
-                      });
+                      // await api.data.updateOne("users", user?.id as string, {
+                      //   preferences: {
+                      //     ...user?.preferences,
+                      //     wallpaper: `/api/media/file/${node.media?.path}`,
+                      //   },
+                      // });
                       toast.success("Updated wallpaper");
                       router.invalidate();
                     }}
@@ -173,9 +172,9 @@ export function NodeDropdown({
           <button
             type="button"
             onClick={async () => {
-              await api.data.updateOne("nodes", node.id, {
-                deleted_at: new Date(),
-              });
+              // await api.data.updateOne("nodes", node.id, {
+              //   deleted_at: new Date(),
+              // });
               router.invalidate();
               toast.success(`${node.type} deleted`);
             }}
@@ -234,9 +233,9 @@ function RenameModal({
               toast.error("name is required");
               return;
             }
-            await api.data.updateOne("nodes", node.id, {
-              name: name as string,
-            });
+            // await api.data.updateOne("nodes", node.id, {
+            //   name: name as string,
+            // });
 
             toast.success(`renamed to ${name}`);
             router.invalidate();
@@ -282,7 +281,7 @@ function ShareModal({
   };
 }) {
   const router = useRouter();
-  const { user } = useRouteContext({ from: "/_app" });
+  // const { user } = useRouteContext({ from: "/_app" });
   const [startDate, setStartDate] = useState<Date | null>(null);
   return (
     <div className={cn("modal", isOpen && "modal-open")}>
@@ -299,12 +298,12 @@ function ShareModal({
           onSubmit={async (e) => {
             e.preventDefault();
 
-            await api.data.createOne("shared", {
-              nodes_id: node.id,
-              users_id: user.id as string,
-              token: nanoid(),
-              valid_till: startDate ?? undefined,
-            });
+            // await api.data.createOne("shared", {
+            //   nodes_id: node.id,
+            //   users_id: user.id as string,
+            //   token: nanoid(),
+            //   valid_till: startDate ?? undefined,
+            // });
             toast.success(`${node.name} is now shared`);
             router.invalidate();
             close();
